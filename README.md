@@ -21,3 +21,12 @@ The following is Go Domain Driven Design project layout scaffold generated:
 └── docker-compose.yml
 
 ```
+
+
+## Installation
+
+Download Scaffold by using:
+```sh
+$ go get -u github.com/Allan-Nava/Go-DDD-Scaffold
+```
+
