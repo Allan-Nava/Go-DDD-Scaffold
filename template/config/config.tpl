@@ -1,13 +1,11 @@
 package config
 
-
 import (
 	"fmt"
 
 	"github.com/caarlos0/env/v6"
     "log"
 )
-
 
 var CONFIGURATION *Configuration
 
