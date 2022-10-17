@@ -16,7 +16,7 @@ func main() {
 	app := cli.NewApp()
 	app.Version = "1.0.1"
 	app.Usage = "Generate Scaffold Domain Driven Design project layout for Go."
-	app.Commands = []cli.Command{
+	app.Commands = []&cli.Command{
 		{
 			Name:    "init",
 			Aliases: []string{"i"},
@@ -32,6 +32,15 @@ func main() {
 					fmt.Println("Success Created. Please excute `make up` to start service.")
 				}
 				return err
+			},
+			{
+				Name:    "help",
+				Aliases: []string{"help"},
+				Usage:   " Generate scaffold project layout",
+				Action: func(c *cli.Context) error {
+					log.Println("help cli.Context", c)
+					return nil
+				},
 			},
 		},
 	}
