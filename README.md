@@ -10,9 +10,9 @@ The following is Go Domain Driven Design project layout scaffold generated:
 ├── Makefile
 ├── README.md
 ├── cmd
-│   └── config.go
-├── config
 │   └── main.go
+├── config
+│   └── config.go
 ├── database
 │   └── db.go
 ├── utils
