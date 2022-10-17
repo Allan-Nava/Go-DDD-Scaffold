@@ -30,3 +30,18 @@ Download Scaffold by using:
 $ go get -u github.com/Allan-Nava/Go-DDD-Scaffold
 ```
 
+## Create a new project
+
+1. Going to your new project folder:
+
+```bash
+# change to project directory
+$ cd $GOPATH/src/path/to/project
+``` 
+
+2. Run `scaffold init`in the new project folder:
+
+
+```bash
+$ scaffold init
+```
