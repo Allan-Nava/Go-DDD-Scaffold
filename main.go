@@ -16,7 +16,7 @@ func main() {
 	app := cli.NewApp()
 	app.Version = "1.0.1"
 	app.Usage = "Generate Scaffold Domain Driven Design project layout for Go."
-	app.Commands = []&cli.Command{
+	app.Commands = []cli.Command{
 		{
 			Name:    "init",
 			Aliases: []string{"i"},
