@@ -33,14 +33,14 @@ func main() {
 				}
 				return err
 			},
-			{
-				Name:    "help",
-				Aliases: []string{"help"},
-				Usage:   " Generate scaffold project layout",
-				Action: func(c *cli.Context) error {
-					log.Println("help cli.Context", c)
-					return nil
-				},
+		},
+		{
+			Name:    "help",
+			Aliases: []string{"help"},
+			Usage:   " Generate scaffold project layout",
+			Action: func(c *cli.Context) error {
+				log.Println("help cli.Context", c)
+				return nil
 			},
 		},
 	}
