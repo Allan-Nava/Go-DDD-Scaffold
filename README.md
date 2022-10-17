@@ -1,4 +1,6 @@
 # Go Domain Driven Design Scaffold
+[![GoDoc](https://godoc.org/github.com/Allan-Nava/Go-DDD-Scaffold?status.svg)](https://godoc.org/github.com/Allan-Nava/Go-DDD-Scaffold)
+
 
 Generate scaffold domain driven design project layout for Go.
 
