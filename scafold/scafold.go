@@ -20,7 +20,8 @@ func init() {
 	if Gopath == "" {
 		panic("cannot find $GOPATH environment variable")
 	}
-}var Gopath string
+}
+var Gopath string
 
 type scaffold struct {
 	debug bool
