@@ -1,7 +1,6 @@
 package main
 
 import (
-
 	"fmt"
 	"log"
 	"os"
@@ -12,9 +11,10 @@ import (
 	"github.com/urfave/cli"
 )
 
-func main(){
+//
+func main() {
 	app := cli.NewApp()
-	app.Version = "1.0.0-rc"
+	app.Version = "1.0.1"
 	app.Usage = "Generate Scaffold Domain Driven Design project layout for Go."
 	app.Commands = []cli.Command{
 		{
@@ -26,12 +26,11 @@ func main(){
 				if err != nil {
 					return err
 				}
-				err = scaffold.New(false).Generate(currDir)
-				//fmt.Printf("error:%+v\n", err)
+				err = scaffold.New(true).Generate(currDir)
+				fmt.Printf("error:%+v currDir %s\n ", err, currDir)
 				if err == nil {
 					fmt.Println("Success Created. Please excute `make up` to start service.")
 				}
-
 				return err
 			},
 		},

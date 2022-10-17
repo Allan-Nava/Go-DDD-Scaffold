@@ -21,6 +21,7 @@ func init() {
 		panic("cannot find $GOPATH environment variable")
 	}
 }
+
 var Gopath string
 
 type scaffold struct {
@@ -36,17 +37,19 @@ func (s *scaffold) Generate(path string) error {
 	if err != nil {
 		return err
 	}
+	//log.Println("Generate ", path, genAbsDir)
+	s.debugPrintf("Generate path=%s genAbsDir=%s \n", path, genAbsDir)
 	projectName := filepath.Base(genAbsDir)
 	//TODO: have to check path MUST be under the $GOPATH/src folder
 	goProjectPath := strings.TrimPrefix(genAbsDir, filepath.Join(Gopath, "src")+string(os.PathSeparator))
-    //
+	//
 	d := data{
 		AbsGenProjectPath: genAbsDir,
 		ProjectPath:       goProjectPath,
 		ProjectName:       projectName,
 		Quit:              "<-quit",
 	}
-    //
+	//
 	if err := s.genFromTemplate(getTemplateSets(), d); err != nil {
 		return err
 	}
@@ -170,7 +173,7 @@ func (templEngine *templateEngine) visit(path string, f os.FileInfo, err error) 
 
 func (s *scaffold) genFormStaticFle(d data) error {
 	walkerFuc := func(path string, f os.FileInfo, err error) error {
-		if f.Mode().IsRegular() == true {
+		if f.Mode().IsRegular() {
 			src, err := os.Open(path)
 			if err != nil {
 				return pkgErr.WithStack(err)
@@ -210,7 +213,7 @@ func (s *scaffold) genFormStaticFle(d data) error {
 }
 
 func (s *scaffold) debugPrintf(format string, a ...interface{}) {
-	if s.debug == true {
+	if s.debug {
 		fmt.Printf(format, a...)
 	}
 }
