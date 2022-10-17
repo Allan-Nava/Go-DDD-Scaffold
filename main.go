@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Allan-Nava/scaffold/scaffold"
+	"github.com/Allan-Nava/Go-DDD-Scaffold/scaffold"
 
 	"github.com/urfave/cli"
 )
