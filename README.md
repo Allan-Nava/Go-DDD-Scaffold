@@ -49,3 +49,4 @@ $ cd $GOPATH/src/path/to/project
 ```bash
 $ scaffold init
 ```
+
