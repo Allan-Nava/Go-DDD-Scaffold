@@ -17,7 +17,7 @@ The following is Go Domain Driven Design project layout scaffold generated:
 │   └── db.go
 ├── utils
 │    ├── api_messages.go
-│   └── env.go
+│    └── env.go
 └── docker-compose.yml
 
 ```
