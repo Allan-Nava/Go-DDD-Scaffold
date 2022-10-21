@@ -2,7 +2,7 @@
 layout: default
 title: Home
 nav_order: 1
-description: "Go Domain Driven Design Scaffold documentation"
+description: "Go DD Scaffold docs"
 permalink: /
 last_modified_date: 2022-10-21T21:54:08+0000
 ---
