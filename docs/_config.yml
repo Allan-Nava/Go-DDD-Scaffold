@@ -14,8 +14,8 @@ remote_theme: pmarsceill/just-the-docs
 # you will see them accessed via {{ site.title }}, {{ site.github_repo }}, and so on.
 # You can create any custom variable you would like, and they will be accessible
 # in the templates via {{ site.myvariable }}.
-title: Go Domain Driven Design Documentation
-description: Go Domain Driven Design
+title: Go DDD docs
+description: Go Domain Driven Design official documentation
 #baseurl: "/just-the-docs" # the subpath of your site, e.g. /blog
 url: "https://allan-nava.github.io/Go-DDD-Scaffold/" # the base hostname & protocol for your site, e.g. http://example.com
 
