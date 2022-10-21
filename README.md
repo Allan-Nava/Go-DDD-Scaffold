@@ -2,6 +2,7 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/Allan-Nava/Go-DDD-Scaffold)](https://goreportcard.com/report/github.com/Allan-Nava/Go-DDD-Scaffold)
 [![GoDoc](https://godoc.org/github.com/Allan-Nava/Go-DDD-Scaffold?status.svg)](https://godoc.org/github.com/Allan-Nava/Go-DDD-Scaffold)
+[![Deploy Jekyll with GitHub Pages dependencies preinstalled](https://github.com/Allan-Nava/Go-DDD-Scaffold/actions/workflows/jekyll-gh-pages.yml/badge.svg?branch=main)](https://github.com/Allan-Nava/Go-DDD-Scaffold/actions/workflows/jekyll-gh-pages.yml)
 
 
 Generate scaffold domain driven design project layout for Go.
