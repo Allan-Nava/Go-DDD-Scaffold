@@ -7,7 +7,7 @@ permalink: /
 last_modified_date: 2022-10-21T21:54:08+0000
 ---
 
-
+# Go Domain Driven Design Scaffold official documentation
 
 Generate scaffold domain driven design project layout for Go.
 
