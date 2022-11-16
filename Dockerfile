@@ -5,7 +5,7 @@ ENV DOCKER_BUILDKIT=1
 #
 WORKDIR /app
 COPY go.mod ./
-COPY main.go ./
+COPY . .
 #
 #COPY go.sum ./
 #RUN go mod tidy
