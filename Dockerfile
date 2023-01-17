@@ -20,7 +20,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 #
 FROM phusion/baseimage:focal-1.2.0
 #
-COPY --from=builder /main /app/main
+COPY --from=builder /app/main /app/main
 RUN chmod -R 755 /app/main
 WORKDIR /app
 #
