@@ -15,7 +15,7 @@ func main() {
 	// 
 	app := &cli.App{
 		Name:     "scaffold",
-		Version:  "v1.0.0",
+		Version:  "v1.0.01",
 		Compiled: time.Now(),
 		Usage:    "Generate scaffold go-ddd project layout",
 		Commands: []*cli.Command{
@@ -26,6 +26,7 @@ func main() {
 				Action: func(c *cli.Context) error {
 					currDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 					if err != nil {
+						log.Println("err filepath.Abs ", err)
 						return err
 					}
 					err = scaffold.New(false).Generate(currDir)
