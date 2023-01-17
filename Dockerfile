@@ -21,6 +21,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM phusion/baseimage:focal-1.2.0
 #
 COPY --from=builder /app /app
+RUN chmod -R 755 /app
 WORKDIR /app
 #
 CMD [ "./scaffold" ]
