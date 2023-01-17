@@ -15,13 +15,13 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 #ARG VERSION
 RUN --mount=type=cache,target=/go/pkg/mod \
    --mount=type=cache,target=/root/.cache/go-build \
-   CGO_ENABLED=0 go build -installsuffix cgo -ldflags "-X main.version=1" -o ./scaffold .
+   CGO_ENABLED=0 go build -installsuffix cgo -ldflags "-X main.version=1" -o scaffold .
 #
 #
 FROM phusion/baseimage:focal-1.2.0
 #
 COPY --from=builder /app /app
-RUN chmod -R 755 /app
+RUN chmod -R 755 /app/scaffold
 WORKDIR /app
 #
 CMD [ "./scaffold" ]
