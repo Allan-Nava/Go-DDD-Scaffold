@@ -18,7 +18,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
    CGO_ENABLED=0 go build -installsuffix cgo -ldflags "-X main.version=1" -o main .
 #
 #
-FROM phusion/baseimage:focal-1.2.0
+FROM golang:1.19-bullseye
 #
 COPY --from=builder /app/main /app/main
 RUN chmod -R 755 /app/main
