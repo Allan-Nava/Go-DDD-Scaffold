@@ -24,5 +24,7 @@ COPY --from=builder /app/main /app/main
 RUN chmod -R 755 /app/main
 WORKDIR /app
 #
-CMD [ "./main" ]
+#CMD [ "./main" ]
+ENTRYPOINT ["./main"]
+CMD ["-h"]
 #
