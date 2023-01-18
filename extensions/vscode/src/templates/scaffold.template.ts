@@ -35,6 +35,7 @@ export function getScaffoldTemplate(scaffoldName: string): string {
     
         f.Listen("0.0.0.0:8080")
         //
+        //`+scaffoldName+`
     }
 
 `;

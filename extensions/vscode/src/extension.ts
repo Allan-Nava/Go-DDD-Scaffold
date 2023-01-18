@@ -24,7 +24,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(disposable);
 	//
 	context.subscriptions.push(
-		commands.registerCommand("extension.new-scaffold", newScaffold),
+		vscode.commands.registerCommand("extension.new-scaffold", newScaffold),
 	);
 }
 //

@@ -9,7 +9,7 @@ import {
     window,
     workspace,
   } from "vscode";
-import { existsSync, lstatSync, writeFile } from "fs";
+import { existsSync, lstatSync } from "fs";
 //
 export const newScaffold = async (uri: Uri) => {
   const scaffoldName = await promptForScaffoldName();
@@ -30,9 +30,9 @@ export const newScaffold = async (uri: Uri) => {
   }
   //
   try {
-    await generateScaffoldCode(blocName, targetDirectory, blocType);
+    await generateScaffoldCode(scaffoldName, targetDirectory,);
     window.showInformationMessage(
-      `Successfully Generated ${scaffoldName} Bloc`
+      `Successfully Generated ${scaffoldName} Scaffold`
     );
   } catch (error) {
     window.showErrorMessage(
@@ -40,14 +40,14 @@ export const newScaffold = async (uri: Uri) => {
         ${error instanceof Error ? error.message : JSON.stringify(error)}`
     );
   }
-}
+};
 //
 function createScaffoldTemplate(
     scaffoldName: string,
     targetDirectory: string,
-    type: BlocType
   ){
     const snakeCaseScaffoldName = changeCase.snakeCase(scaffoldName);
+    console.log("snakeCaseScaffoldName", snakeCaseScaffoldName, targetDirectory);
 
 }
 //
@@ -60,10 +60,24 @@ function promptForScaffoldName(): Thenable<string | undefined> {
 }
 //
 
+async function promptForTargetDirectory(): Promise<string | undefined> {
+  const options: OpenDialogOptions = {
+    canSelectMany: false,
+    openLabel: "Select a folder to create the scaffold in",
+    canSelectFolders: true,
+  };
+
+  return window.showOpenDialog(options).then((uri) => {
+    if (_.isNil(uri) || _.isEmpty(uri)) {
+      return undefined;
+    }
+    return uri[0].fsPath;
+  });
+}
+//
 async function generateScaffoldCode(
   scaffoldName: string,
   targetDirectory: string,
-  type: BlocType
 ) {
   const shouldCreateDirectory = workspace
     .getConfiguration("bloc")
@@ -76,11 +90,11 @@ async function generateScaffoldCode(
   }
   //
   await Promise.all([
-    createScaffoldTemplate(scaffoldName, scaffoldDirectoryPath, type),
+    createScaffoldTemplate(scaffoldName, scaffoldDirectoryPath),
   ]);
 }
 //
-function createDirectory(targetDirectory: string): Promise<void> {
+function createDirectory(targetDirectory: string): Promise<void>  {
   return new Promise((resolve, reject) => {
     mkdirp(targetDirectory, (error) => {
       if (error) {
