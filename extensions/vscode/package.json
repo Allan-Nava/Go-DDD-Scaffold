@@ -7,17 +7,36 @@
     "vscode": "^1.74.0"
   },
   "categories": [
-    "Other"
+    "Snippets",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "go",
+    "framework",
+    "ddd",
+    "domain driven design",
+    "pattern"
   ],
   "activationEvents": [
-    "onCommand:go-ddd-scaffold.helloWorld"
+    "onCommand:go-ddd-scaffold.helloWorld",
+    "onCommand:extension.new-scaffold"
   ],
-  "main": "./dist/extension.js",
+  "main": "./dist/extension",
   "contributes": {
+    "configuration": [
+      {
+        "title": "Go Domain Driven Design Scaffold"
+      }
+    ],
     "commands": [
       {
         "command": "go-ddd-scaffold.helloWorld",
         "title": "Hello World"
+      },
+      {
+        "command": "extension.new-scaffold",
+        "title": "Go DDD: New Scaffold",
+        "icon": "assets/logo.png"
       }
     ]
   },
