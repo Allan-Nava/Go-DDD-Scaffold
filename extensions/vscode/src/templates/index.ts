@@ -1,0 +1,3 @@
+//
+export * from "./scaffold.template";
+//
