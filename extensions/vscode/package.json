@@ -38,7 +38,16 @@
         "title": "Go DDD: New Scaffold",
         "icon": "assets/logo.png"
       }
-    ]
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "extension.new-scaffold",
+          "group": "scaffoldGroup@1",
+          "when": "explorerResourceIsFolder"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "webpack --mode production",
