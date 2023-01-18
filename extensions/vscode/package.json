@@ -1,6 +1,6 @@
 {
   "name": "go-ddd-scaffold",
-  "displayName": "go-ddd-scaffold",
+  "displayName": "GO Domain Driven Design Scaffold",
   "description": "",
   "version": "0.0.1",
   "engines": {
