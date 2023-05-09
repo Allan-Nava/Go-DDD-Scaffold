@@ -16,7 +16,7 @@ jobs:
           GOARCH: "386"
           GOOS: linux
           EXTRA_FILES: "LICENSE"
-          CMD_PATH: "./.."
+          CMD_PATH: "main.go"
           BUILD_ARGS: "-o scaffold"
           PROJECT_NAME: "go-ddd-scaffold"
   #
@@ -33,7 +33,7 @@ jobs:
           GOARCH: amd64
           GOOS: linux
           EXTRA_FILES: "LICENSE"
-          CMD_PATH: "./.."
+          CMD_PATH: "main.go"
           BUILD_ARGS: "-o scaffold"
           PROJECT_NAME: "go-ddd-scaffold"
   #
@@ -50,7 +50,7 @@ jobs:
           GOARCH: "arm"
           GOOS: linux
           EXTRA_FILES: "LICENSE"
-          CMD_PATH: "./.."
+          CMD_PATH: "main.go"
           BUILD_ARGS: "-o scaffold"
           PROJECT_NAME: "go-ddd-scaffold"
   #
@@ -67,7 +67,7 @@ jobs:
           GOARCH: arm64
           GOOS: linux
           EXTRA_FILES: "LICENSE"
-          CMD_PATH: "./.."
+          CMD_PATH: "main.go"
           BUILD_ARGS: "-o scaffold"
           PROJECT_NAME: "go-ddd-scaffold"
   #
@@ -84,7 +84,7 @@ jobs:
           GOARCH: amd64
           GOOS: darwin
           EXTRA_FILES: "LICENSE"
-          CMD_PATH: "./.."
+          CMD_PATH: "main.go"
           BUILD_ARGS: "-o scaffold"
           PROJECT_NAME: "go-ddd-scaffold"
   #
@@ -101,7 +101,7 @@ jobs:
           GOARCH: "386"
           GOOS: windows
           EXTRA_FILES: "LICENSE"
-          CMD_PATH: "./.."
+          CMD_PATH: "main.go"
           BUILD_ARGS: "-o scaffold"
           PROJECT_NAME: "go-ddd-scaffold"
   #
@@ -118,7 +118,7 @@ jobs:
           GOARCH: amd64
           GOOS: windows
           EXTRA_FILES: "LICENSE"
-          CMD_PATH: "./.."
+          CMD_PATH: "main.go"
           BUILD_ARGS: "-o scaffold"
           PROJECT_NAME: "go-ddd-scaffold"
     #
