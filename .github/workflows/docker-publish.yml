@@ -1,10 +1,10 @@
 name: 'docker-publish'
-
+#
 on:
   push:
-    branches: [ master ]
+    branches: [ main, "master" ]
     tags: [ v* ]
-
+#
 jobs:
   docker:
     name: 'docker-build-and-push'
