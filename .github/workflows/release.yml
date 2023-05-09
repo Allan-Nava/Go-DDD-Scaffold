@@ -1,5 +1,6 @@
 # .github/workflows/release.yaml
 on: release
+#
 name: Build Release
 jobs:
   release-linux-386:
@@ -15,6 +16,7 @@ jobs:
           GOARCH: "386"
           GOOS: linux
           EXTRA_FILES: "LICENSE"
+          CMD_PATH: "./.."
           BUILD_ARGS: "-o scaffold"
           PROJECT_NAME: "go-ddd-scaffold"
   #
@@ -31,6 +33,7 @@ jobs:
           GOARCH: amd64
           GOOS: linux
           EXTRA_FILES: "LICENSE"
+          CMD_PATH: "./.."
           BUILD_ARGS: "-o scaffold"
           PROJECT_NAME: "go-ddd-scaffold"
   #
@@ -47,7 +50,7 @@ jobs:
           GOARCH: "arm"
           GOOS: linux
           EXTRA_FILES: "LICENSE"
-          #CMD_PATH: "main.go"
+          CMD_PATH: "./.."
           BUILD_ARGS: "-o scaffold"
           PROJECT_NAME: "go-ddd-scaffold"
   #
@@ -64,6 +67,7 @@ jobs:
           GOARCH: arm64
           GOOS: linux
           EXTRA_FILES: "LICENSE"
+          CMD_PATH: "./.."
           BUILD_ARGS: "-o scaffold"
           PROJECT_NAME: "go-ddd-scaffold"
   #
@@ -80,6 +84,7 @@ jobs:
           GOARCH: amd64
           GOOS: darwin
           EXTRA_FILES: "LICENSE"
+          CMD_PATH: "./.."
           BUILD_ARGS: "-o scaffold"
           PROJECT_NAME: "go-ddd-scaffold"
   #
@@ -96,6 +101,7 @@ jobs:
           GOARCH: "386"
           GOOS: windows
           EXTRA_FILES: "LICENSE"
+          CMD_PATH: "./.."
           BUILD_ARGS: "-o scaffold"
           PROJECT_NAME: "go-ddd-scaffold"
   #
@@ -112,6 +118,7 @@ jobs:
           GOARCH: amd64
           GOOS: windows
           EXTRA_FILES: "LICENSE"
+          CMD_PATH: "./.."
           BUILD_ARGS: "-o scaffold"
           PROJECT_NAME: "go-ddd-scaffold"
     #
