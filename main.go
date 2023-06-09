@@ -15,7 +15,7 @@ func main() {
 	// 
 	app := &cli.App{
 		Name:     "scaffold",
-		Version:  "v1.0.01",
+		Version:  "v1.0.1",
 		Compiled: time.Now(),
 		Usage:    "Generate scaffold go-ddd project layout",
 		Commands: []*cli.Command{
