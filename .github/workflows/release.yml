@@ -36,8 +36,8 @@ jobs:
         uses: Allan-Nava/go-release.action@v1.5.01
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GOARCH: "386"
-          GOOS: amd64
+          GOARCH: "amd64"
+          GOOS: darwin
           EXTRA_FILES: "LICENSE"
           CMD_PATH: "main.go"
           BUILD_ARGS: "-o scaffold-cli"
