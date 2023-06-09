@@ -18,7 +18,7 @@ jobs:
           EXTRA_FILES: "LICENSE"
           CMD_PATH: "main.go"
           BUILD_ARGS: "-o scaffold"
-          PROJECT_NAME: "scaffold"
+          PROJECT_NAME: "Go-DDD-Scaffold"
   #
   release-linux-amd64:
     name: release linux/amd64
@@ -35,7 +35,7 @@ jobs:
           EXTRA_FILES: "LICENSE"
           CMD_PATH: "main.go"
           BUILD_ARGS: "-o scaffold"
-          PROJECT_NAME: "scaffold"
+          PROJECT_NAME: "Go-DDD-Scaffold"
   #
   release-linux-arm:
     name: release linux/386
@@ -52,7 +52,7 @@ jobs:
           EXTRA_FILES: "LICENSE"
           CMD_PATH: "main.go"
           BUILD_ARGS: "-o scaffold"
-          PROJECT_NAME: "scaffold"
+          PROJECT_NAME: "Go-DDD-Scaffold"
   #
   release-linux-arm64:
     name: release linux/amd64
@@ -69,7 +69,7 @@ jobs:
           EXTRA_FILES: "LICENSE"
           CMD_PATH: "main.go"
           BUILD_ARGS: "-o scaffold"
-          PROJECT_NAME: "scaffold"
+          PROJECT_NAME: "Go-DDD-Scaffold"
   #
   release-darwin-amd64:
     name: release darwin/amd64
@@ -86,7 +86,7 @@ jobs:
           EXTRA_FILES: "LICENSE"
           CMD_PATH: "main.go"
           BUILD_ARGS: "-o scaffold"
-          PROJECT_NAME: "scaffold"
+          PROJECT_NAME: "Go-DDD-Scaffold"
   #
   release-windows-386:
     name: release windows/386
