@@ -3,6 +3,46 @@ on: release
 #
 name: Build Release
 jobs:
+  #
+  # 64-bit
+  #$ GOOS=darwin GOARCH=amd64 go build -o bin/app-amd64-darwin app.go
+  #
+  ## 32-bit
+  #$ GOOS=darwin GOARCH=386 go build -o bin/app-386-darwin app.go
+  release-macos-386:
+    name: release macos/32
+    permissions: write-all
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: compile and release
+        uses: Allan-Nava/go-release.action@v1.5.01
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOARCH: "386"
+          GOOS: darwin
+          EXTRA_FILES: "LICENSE"
+          CMD_PATH: "main.go"
+          BUILD_ARGS: "-o scaffold-cli"
+          PROJECT_NAME: "scaffold-cli"
+  #
+  release-macos-amd64:
+    name: release macos/32
+    permissions: write-all
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: compile and release
+        uses: Allan-Nava/go-release.action@v1.5.01
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOARCH: "386"
+          GOOS: amd64
+          EXTRA_FILES: "LICENSE"
+          CMD_PATH: "main.go"
+          BUILD_ARGS: "-o scaffold-cli"
+          PROJECT_NAME: "scaffold-cli"
+  #
   release-linux-386:
     name: release linux/386
     permissions: write-all
