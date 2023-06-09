@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	// 
+	//
 	app := &cli.App{
 		Name:     "scaffold",
 		Version:  "v1.0.1",
