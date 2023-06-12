@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/gofiber/fiber/v2 v2.32.0
-	github.com/golang-jwt/jwt/v4 v4.4.1
+	github.com/ansrivas/fiberprometheus/v2 v2.6.0
 	github.com/caarlos0/env/v6 v6.9.1
 	gorm.io/driver/mysql v1.3.3
 	gorm.io/gorm v1.23.4
