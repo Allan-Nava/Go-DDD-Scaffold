@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.2
+# syntax=docker/dockerfile:1.26
 FROM golang:1.18-bullseye as builder
 LABEL maintainer="allan.nava@hiway.media"
 ENV DOCKER_BUILDKIT=1
