@@ -1,46 +1,61 @@
-# AGENTS.md — Go-DDD-Scaffold
+# AGENTS.md - Go-DDD-Scaffold
 
-Generatore CLI (`github.com/Allan-Nava/Go-DDD-Scaffold`) che crea lo scheletro di un progetto Go a layout Domain Driven Design: CLI `scaffold init` (`main.go` + `scaffold/`), template del progetto generato (`template/`, `static/`), estensione VSCode gemella (`extensions/vscode/`), docs Jekyll su GitHub Pages (`docs/`), CI GitHub Actions (`.github/workflows/`).
+Generatore CLI (`github.com/Allan-Nava/Go-DDD-Scaffold`) che crea lo scheletro di un progetto Go a layout Domain Driven Design: CLI `scaffold init` (`main.go` + `scaffold/`), template del progetto generato (`template/`, `static/`, **embeddati nel binario**), estensione VSCode gemella (`extensions/vscode/`), docs Jekyll su GitHub Pages (`docs/`), CI GitHub Actions (`.github/workflows/`).
+
 
 Questo file definisce le regole operative per gli agent (Copilot, Claude, altri tool AI) quando lavorano in questo repository.
 
 ## Regole di lavoro (SEMPRE)
 
-- **Il generatore e l'estensione VSCode sono gemelli**: ogni modifica ai template va propagata su **entrambi** i set: `template/` + `static/` (CLI) e `extensions/vscode/src/templates/*.tpl` (estensione). Sono gia in drift (l'estensione ha `config/`, `utils/api_messages` che la CLI non ha): quando tocchi uno dei due, allinea o annota esplicitamente il drift. Mai fixare solo un lato in silenzio.
-- **Un template che genera codice non compilabile e un bug bloccante.** Il gate e: `scaffold init` in una dir vuota -> `go mod tidy && go build ./... && go vet ./...` del progetto generato deve passare. Verificare **sempre** cosi, non a lettura: l'output di `scaffold init` e codice Go, non testo.
-- **Ogni release = tag `vX.Y.Z`**: `minor` per novita sostanziali (nuovi template/comandi/feature, rimozioni), `patch` per fix/bump dipendenze. La versione vive in **3 posti** da tenere allineati: tag git, `Version` in `main.go`, `version` in `extensions/vscode/package.json`. Il tag scatena `release.yml` (binari multi-arch) e `vscode-publish.yml` (Open VSX + Marketplace): **un tag pubblica sui marketplace pubblici**, quindi taggare solo su richiesta esplicita.
-- **MAI `git push`**: lo fa sempre l'utente. MAI `Co-Authored-By` nei commit.
-- **Niente binari nel repo**: gli artefatti li produce la CI (`release.yml`). Se trovi un eseguibile committato, va rimosso e aggiunto a `.gitignore`, non aggiornato.
-- **Zero dipendenze runtime dall'ambiente**: template e static sono in `embed.FS`, compilati nel binario. Non reintrodurre lookup su `$GOPATH`, path assoluti o file letti da disco a runtime: un `go install` del binario non ha il repo accanto.
-- **Documentare le modifiche fattuali**: `README.md` (albero del progetto generato, installazione), `docs/` per le pagine Pages. Ogni cambio del layout generato va riflesso nell'albero ASCII del README.
+- **Un template che genera codice non compilabile e un bug bloccante.** Il gate e **`make e2e`**: genera in una tempdir e lancia `go mod tidy && go build ./... && go vet ./... && gofmt -l`. Verificare **sempre** cosi, non a lettura: l'output di `scaffold init` e codice Go, non testo. `make check && make test` non basta - i test unitari controllano sintassi e formattazione, non la compilazione con le dipendenze reali.
+- **Il generatore e l'estensione VSCode sono gemelli**: ogni modifica ai template va propagata su **entrambi** i set - `template/` + `static/` (CLI) e `extensions/vscode/src/templates/*.tpl` + `src/templates/scaffold.template.ts` (estensione). Erano in drift pesante (`database/db.tpl` era un duplicato identico di `config/config.tpl`). Quando tocchi uno dei due, allinea o annota esplicitamente il drift. Mai fixare solo un lato in silenzio.
+- **Ogni release = tag `vX.Y.Z`**: `minor` per novita sostanziali (nuovi template/comandi/feature, rimozioni), `patch` per fix/bump dipendenze. La versione del binario arriva da `-ldflags "-X main.version=..."` (il workflow la prende da `github.ref_name`): **non** hardcodarla in `main.go`. Resta da allineare a mano `version` in `extensions/vscode/package.json`. Il tag scatena `release.yml` (binari multi-arch) e `vscode-publish.yml` (Open VSX + Marketplace) - **un tag pubblica sui marketplace pubblici**, quindi taggare solo su richiesta esplicita.
+- **MAI `git push`** - lo fa sempre l'utente. MAI `Co-Authored-By` nei commit.
+- **Niente binari nel repo**: gli artefatti li produce la CI. Se trovi un eseguibile committato, va rimosso e aggiunto a `.gitignore`, non aggiornato (c'era `scaffold-cli-macos`, 4,8 MB).
+- **Zero dipendenze runtime dall'ambiente**: `template/` e `static/` sono in `embed.FS` (dichiarati in `main.go`, iniettati come `fs.FS` in `scaffold.Options`). Non reintrodurre lookup su `$GOPATH`, path assoluti o file letti da disco a runtime - un `go install` del binario non ha il repo accanto.
+- **Documentare le modifiche fattuali**: `README.md` e `docs/index.md` (albero del progetto generato, installazione, flag) vanno riflessi a ogni cambio del layout. Interventi non banali -> doc `.md` in `docs/` con schema ASCII, come `docs/audit-2026-08-11.md`.
 
 ## Pattern per modifiche al generatore (validato)
 
-1. **Baseline**: `go build ./... && go vet ./... && go test ./...` + `scaffold init` in una tempdir e `go build ./...` sul generato. Salvare l'output com'e *prima*: e il riferimento.
+1. **Baseline**: `make check && make test && make e2e`. Salvare l'output com'e *prima*: e il riferimento.
 2. **Modifica** al generatore o ai template, un layer per volta (mai generatore + template + CI nello stesso passo).
-3. **Test di generazione end-to-end**: dir vuota -> `scaffold init` -> `go mod tidy && go build ./... && go vet ./...`. Un `TestGenerate` che verifica solo "nessun errore" non basta: deve asserire i **file attesi** e il **contenuto sostituito** (`{{.ProjectName}}` risolto, niente `TODO/`).
-4. **Idempotenza**: rilanciare `scaffold init` sulla stessa dir non deve distruggere file esistenti (default: skip + warning; sovrascrittura solo con `--force`).
-5. **Chiusura**: allineare estensione VSCode, README, versione nei 3 posti, `.gitignore`; poi commit.
+3. **Gate**: `make e2e`. Se cambia il set di file generati, aggiornare l'asserzione in `main_test.go` (`TestEmbeddedAssetsProduceTheDocumentedLayout`) - e volutamente esatta, non "contiene".
+4. **Idempotenza**: rilanciare `scaffold init` non deve distruggere file esistenti (default: skip via `O_EXCL`; sovrascrittura solo con `--force`).
+5. **Smoke funzionale** se hai toccato `template/cmd/` o `template/database/`: avviare il servizio generato e verificare `GET /health` + shutdown su `SIGTERM`, non solo la compilazione.
+6. **Chiusura**: allineare estensione VSCode, README, `docs/`, versione dell'estensione, `.gitignore`; poi commit.
 
 ## Trappole note / regole tecniche
 
-- **`text/template`, MAI `html/template`**: `html/template` fa escaping HTML sul **codice Go** (`&&` -> `&amp;&amp;`, `<-` -> `&lt;-`) e produce sorgenti rotti. Era il motivo dell'helper `unescaped` e del campo `data.Quit: "<-quit"`: workaround di un bug, non feature. Se serve un `<-` in un template, il fix e `text/template`, non un altro escape hatch.
-- **`$GOPATH` non esiste piu come convenzione**: la variabile e vuota su qualsiasi setup moderno (`go env GOPATH` risponde comunque `~/go`). Il vecchio `panic("cannot find $GOPATH")` nell'`init()` del package rendeva la CLI inutilizzabile fuori dal GOPATH, e i test passavano solo perche il repo era clonato dentro `~/go/src/`. Non dedurre path dal GOPATH: il target di generazione e **`os.Getwd()`**, non `filepath.Dir(os.Args[0])` (quello e la dir del binario: bug storico, i file finivano accanto all'eseguibile).
-- **`defer f.Close()` dentro un callback di walk e un leak**: i defer si accumulano fino alla fine dell'intera camminata, non per iterazione. Chiudere esplicitamente (o isolare in una funzione dedicata) in ogni loop su file.
+- **`text/template`, MAI `html/template`**: `html/template` fa escaping HTML sul **codice Go** (`&&` -> `&amp;&amp;`, `<-` -> `&lt;-`) e produce sorgenti rotti. Era il motivo dell'helper `unescaped` e del campo `data.Quit = "<-quit"`: workaround di un bug, non feature. Entrambi rimossi; `TestGenerateDoesNotEscapeGoOperators` e la regressione.
+- **`template/` non puo contenere un `go.mod`**: renderebbe la directory un modulo separato e `//go:embed all:template` fallirebbe con *"cannot embed directory template: in different module"*. Per questo il template si chiama `go.mod.tpl`.
+- **Due suffissi, due regole**: `.tmpl` -> `.go` (`cmd/main.tmpl` -> `cmd/main.go`); `.tpl` -> perde il suffisso (`go.mod.tpl` -> `go.mod`). File senza suffisso in `template/` (`Dockerfile`, `README.md`, `env/.env.local`) sono comunque passati dal motore template: possono usare `{{.ProjectName}}`, ma un `{{` letterale li rompe. `static/` invece e copia byte-per-byte, senza rendering - e li che va un file con `{{` letterali.
+- **`embed` e i dot-file**: serve il prefisso `all:` (`//go:embed all:template`), altrimenti `env/.env.local` e `.dockerignore` non entrano nel binario.
+- **`$GOPATH` non esiste piu come convenzione**: la variabile e vuota su qualsiasi setup moderno (`go env GOPATH` risponde comunque `~/go`). Il vecchio `panic("cannot find $GOPATH")` nell'`init()` del package rendeva la CLI inutilizzabile fuori dal GOPATH - e i test passavano solo perche il repo era clonato dentro `~/go/src/`. Il target di generazione e **`os.Getwd()`**, non `filepath.Dir(os.Args[0])` (quello e la dir del binario - bug storico: i file finivano accanto all'eseguibile). Il module path si deduce dalla dir con `scaffold.ModulePath` (primo segmento host-like), non dal GOPATH.
+- **`go build -o scaffold` scrive DENTRO `scaffold/`**: Go interpreta `-o <directory-esistente>` come "metti il binario li", producendo `scaffold/Go-DDD-Scaffold`. Buildare sempre in `bin/`. Per lo stesso motivo **mai** una riga `scaffold` in `.gitignore`/`.dockerignore`: escluderebbe il package.
+- **`defer f.Close()` dentro un callback di walk e un leak**: i defer si accumulano fino alla fine dell'intera camminata, non per iterazione. Chiudere per file (o in una closure dedicata, come fa `copyStatic`).
 - **Permessi**: `0o755` per le dir, `0o644` per i file. Mai `os.ModePerm` (0777).
-- **`filepath.WalkDir` batte `filepath.Walk`** (niente `lstat` per entry); su `embed.FS` usare `fs.WalkDir`. E il valore di ritorno del walk **va controllato**: scartarlo nasconde errori di I/O.
-- **File senza estensione `.tmpl` in `template/`** (`go.mod`, `Dockerfile`, `README.md`, `env/.env.local`) sono comunque passati dal motore template: possono usare `{{.ProjectName}}`, ma un `{{` letterale li rompe. `static/` invece e copia byte-per-byte, senza rendering.
-- **Il `go.mod` generato ha `module TODO/{{.ProjectName}}`**: il prefisso `TODO/` e un placeholder che l'utente deve sostituire, non un module path valido per `go get`. Segnalarlo nel README/output, non silenziarlo.
-- **Dockerfile: `go mod tidy` in build e un antipattern**: richiede rete, muta `go.mod`/`go.sum` e invalida la cache dei layer. Usare `COPY go.mod go.sum ./` + `go mod download` come layer separato **prima** di `COPY . .`, e uno stage finale `scratch`/`alpine` (immagine finale che parte da `golang:` = ~1 GB inutili).
-- **La versione Go va tenuta in sync in 4 posti**: `go.mod`, `Dockerfile`, `template/Dockerfile`, matrice `go-version` dei workflow. Il drift storico (`go.mod` 1.19 vs `Dockerfile` 1.18) rompeva la build Docker senza rompere la CI.
-- **`dependabot.yml` punta a `/tests`** (directory inesistente; quella vera e `test/` e non ha un `go.mod` proprio): la voce e morta, non aggiungerne di simili.
-- `test/a_main_test.go` e solo lo scheletro `TestMain` + helper: i test veri stanno accanto al codice (`scaffold/scaffold_test.go`). Nei test usare `t.TempDir()` (auto-cleanup), non `ioutil.TempDir` + `defer os.RemoveAll`.
-- **`echo ::set-output`** nei workflow e deprecato da GitHub (`docker-publish.yml`): usare `$GITHUB_OUTPUT`.
+- **`fs.WalkDir` / `filepath.WalkDir`**, non `Walk` (niente `lstat` per entry). E il valore di ritorno del walk **va controllato**: scartarlo nasconde errori di I/O (era il caso di `getTemplateSets`).
+- **Mai il DSN nei log o negli errori**: contiene la password. Logare host/porta/nome database.
+- **La versione Go va tenuta in sync in 4 posti**: `go.mod`, `Dockerfile`, `template/Dockerfile`, matrice `go-version` in `go.yml`. Il drift storico (`go.mod` 1.19 vs `Dockerfile` 1.18 vs `template/Dockerfile` 1.20) rompeva la build Docker senza rompere la CI.
+- **Dockerfile: `go mod tidy` in build e un antipattern** - richiede rete, muta `go.mod`/`go.sum` e invalida la cache dei layer. `COPY go.mod go.sum ./` + `go mod download` come layer separato **prima** di `COPY . .`, e stage finale `alpine` (l'immagine single-stage `golang:*` pesava ~1 GB; ora 12,2 MB).
+- **In un workflow `run: cd <dir>` e un no-op**: ogni step apre una shell nuova. Usare `working-directory` (o `defaults.run.working-directory`).
+- **`echo ::set-output` e disattivato** da GitHub: per i tag/label Docker usare `docker/metadata-action`.
+- Nei test usare `t.TempDir()` (auto-cleanup) e `fstest.MapFS` per gli asset: i test del package `scaffold` non devono dipendere da `template/` reale - quelli end-to-end stanno in `main_test.go`, dove vive l'`embed`.
 
 ## Puntatori
 
-- CLI: `main.go` (comandi urfave/cli) - generatore: `scaffold/scaffold.go` - test: `scaffold/scaffold_test.go`
+- CLI: `main.go` (comandi urfave/cli + direttive `embed`) - generatore: `scaffold/scaffold.go` - test unitari: `scaffold/scaffold_test.go` - test end-to-end sugli asset reali: `main_test.go`
 - Template del progetto generato: `template/` (rendering) + `static/` (copia raw) - gemelli VSCode: `extensions/vscode/src/templates/`
-- CI: `.github/workflows/` - `go.yml`/`go-test.yml` (build+test), `release.yml` (binari multi-arch su release), `go-release.yml` (tarball via `build.sh`), `docker-publish.yml` (ghcr.io), `vscode-publish.yml` (marketplace su tag), `jekyll-gh-pages.yml` (docs)
-- Audit tecnico e stato dei fix: `docs/audit-2026-08-11.md`
-- Stack del progetto generato: Fiber v2, GORM (MySQL), zap, `caarlos0/env`, godotenv, `go-playground/validator`
+- Dev loop: `Makefile` - `check`, `test`, `e2e`, `build`, `docker`
+- CI: `.github/workflows/` - `go.yml` (gofmt+vet+test matrice 1.22-1.24, **+ job che compila il progetto generato e ne fa lo smoke test**), `release.yml` (binari multi-arch su release), `go-release.yml` (tarball via `build.sh`), `docker-publish.yml` (ghcr.io, multi-arch, cache GHA), `vscode-publish.yml` (marketplace su tag), `jekyll-gh-pages.yml` (docs)
+- **Audit tecnico, correzioni e debito residuo**: `docs/audit-2026-08-11.md`
+- **L'estensione VSCode non genera nulla**: il comando e uno stub residuo di un generatore Flutter/BLoC (`writeFile` commentata, target `_bloc.dart`, `.tpl` mai letti, `publisher: "None"`). Serve una riscrittura, non una patch - vedi la sezione "Debito residuo" dell'audit. Non trattarla come funzionante.
+- Stack del progetto generato: Fiber v2, GORM (MySQL), zap, `caarlos0/env/v11`, godotenv
+
+## graphify
+
+Questo repo **non ha ancora** un knowledge graph. Se serve navigazione strutturale (e un repo piccolo: ~700 righe Go + estensione TS), generarlo con `graphify build .` e poi:
+
+- `graphify query "<domanda>"` per domande sul codice, `graphify path "<A>" "<B>"` per relazioni, `graphify explain "<concetto>"` per concetti puntuali - ritornano un sottografo scoped, molto piu piccolo di `GRAPH_REPORT.md` o del grep grezzo.
+- `graphify-out/wiki/index.md` per la navigazione ampia, `GRAPH_REPORT.md` solo per review architetturale.
+- Dopo modifiche al codice: `graphify update .` (solo AST, nessun costo API).
