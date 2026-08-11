@@ -74,3 +74,20 @@ re-running `scaffold init` in a live project is safe.
 
 The technical audit of the generator, the applied fixes and the remaining debt
 are in [audit-2026-08-11](audit-2026-08-11.md).
+
+## Backlog e roadmap
+
+Il debito residuo vive in [backlog.md](backlog.md), che è la **sorgente unica** delle
+issue GitHub: uno script idempotente apre, aggiorna e chiude una issue per ogni item, e
+crea al volo le milestone che non esistono ancora.
+
+- [backlog.md](backlog.md) — gli item, con `id` stabile, priorità e milestone
+- [roadmap.md](roadmap.md) — vista per milestone, **generata** dal backlog
+- [milestone su GitHub](https://github.com/Allan-Nava/Go-DDD-Scaffold/milestones) — la board
+
+```sh
+make backlog-lint          # valida il backlog, non tocca GitHub
+make roadmap               # rigenera roadmap.md
+make backlog-sync          # dry-run del sync verso le issue
+make backlog-sync-apply    # applica
+```

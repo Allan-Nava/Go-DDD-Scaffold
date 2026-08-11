@@ -15,6 +15,21 @@ concurrency:
   cancel-in-progress: true
 #
 jobs:
+  docs:
+    # Gate sul backlog: id univoci, vocabolario, titoli milestone coerenti, e la
+    # roadmap committata allineata al backlog (è generata, non scritta a mano).
+    name: backlog & pagine generate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: backlog-lint
+        run: python3 docs/scripts/backlog-lint.py
+      - name: generated-pages-check
+        run: python3 docs/scripts/generate-roadmap.py --check
+
   build:
     name: build & test
     runs-on: ubuntu-latest

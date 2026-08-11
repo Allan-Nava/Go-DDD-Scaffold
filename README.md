@@ -101,6 +101,23 @@ make docker  # build the container image
 buildable Go. See [CLAUDE.md](CLAUDE.md) for the working rules and
 [docs/audit-2026-08-11.md](docs/audit-2026-08-11.md) for the technical audit.
 
+### Backlog and milestones
+
+[docs/backlog.md](docs/backlog.md) is the single source of truth for the open work.
+An idempotent script opens, updates and closes one GitHub issue per item, creating any
+milestone that does not exist yet — milestones are whatever the items declare, there is
+no fixed list. [docs/roadmap.md](docs/roadmap.md) is generated from it.
+
+```sh
+make backlog-lint          # validate the backlog, no GitHub access
+make roadmap               # regenerate docs/roadmap.md
+make backlog-sync          # dry-run of the issue sync
+make backlog-sync-apply    # apply it
+```
+
+The sync only ever touches issues carrying the `backlog-sync` label, so Renovate,
+Dependabot and third-party reports are never read or closed.
+
 ## VSCode extension
 
 `extensions/vscode/` holds a companion extension. Its generation command is

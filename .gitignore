@@ -21,3 +21,7 @@ scaffold-cli-*
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# Python bytecode degli script in docs/scripts/
+__pycache__/
+*.pyc

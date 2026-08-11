@@ -33,6 +33,31 @@ e2e: build
 docker:
 	docker build --build-arg VERSION=$(VERSION) -t go-ddd-scaffold:$(VERSION) .
 
+# --- backlog / milestone / issue -------------------------------------------------
+# docs/backlog.md è la sorgente unica: le milestone sono i titoli dichiarati dagli
+# item, non un elenco fisso, e il sync le crea su GitHub se mancano.
+
+.PHONY: backlog-lint
+backlog-lint:
+	python3 docs/scripts/backlog-lint.py
+
+.PHONY: roadmap
+roadmap:
+	python3 docs/scripts/generate-roadmap.py
+
+# Gate CI: la pagina generata committata deve combaciare con il backlog.
+.PHONY: generated-pages-check
+generated-pages-check:
+	python3 docs/scripts/generate-roadmap.py --check
+
+.PHONY: backlog-sync
+backlog-sync:
+	python3 docs/scripts/sync-backlog-to-issues.py
+
+.PHONY: backlog-sync-apply
+backlog-sync-apply:
+	python3 docs/scripts/sync-backlog-to-issues.py --apply
+
 .PHONY: clean
 clean:
 	rm -rf bin
