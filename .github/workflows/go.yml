@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: extensions/vscode/package-lock.json
       - run: npm ci
@@ -63,7 +63,9 @@ jobs:
         with:
           go-version: '1.22.x'
           cache: true
-      - uses: golangci/golangci-lint-action@v6
+      # v9: la v6 supporta solo golangci-lint v1 e rifiuta la nostra config v2
+      # ("golangci-lint v2 is not supported by golangci-lint-action v6").
+      - uses: golangci/golangci-lint-action@v9
         with:
           version: v2.12.2
 

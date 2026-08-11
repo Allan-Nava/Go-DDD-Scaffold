@@ -151,6 +151,37 @@ Da decidere:
 
 In entrambi i casi va scelto **uno** dei due workflow: la duplicazione attuale è il problema vero.
 
+### `pages-config-stale` — GitHub Pages: config datata e build mai osservata verde
+
+- **status**: open
+- **priority**: low
+- **labels**: documentation, github_actions
+- **milestone**: Hardening CI/CD
+- **ref**: [audit-2026-08-11.md](audit-2026-08-11.md)
+
+Il workflow Pages era rotto per un motivo indipendente dai contenuti: `upload-pages-artifact@v1`
+usa internamente `actions/upload-artifact@v3`, che GitHub ora **fa fallire d'ufficio**. Il job moriva
+in *"Set up job"*, prima di eseguire un solo step — per **tutti** i 6 run visibili nello storico.
+Corretto (`configure-pages@v5`, `upload-pages-artifact@v3`, `deploy-pages@v4`, `checkout@v4`) e
+aggiunto `JEKYLL_GITHUB_TOKEN` allo step di build.
+
+**Conseguenza da tenere presente**: poiché il job non è mai arrivato a costruire il sito, la build
+Jekyll di questi doc **non è mai stata osservata verde**. Non ho potuto riprodurla in locale: il
+container `ghcr.io/actions/jekyll-build-pages` carica sempre `jekyll-github-metadata`, che interroga
+`GET /repos/:nwo/pages` e va in errore fatale senza credenziali valide; il token disponibile in
+locale legge quell'endpoint via `curl` (HTTP 200) ma viene rifiutato dentro il container, per motivi
+non osservabili da fuori. Il primo run dopo il fix è quindi la prima vera verifica.
+
+Da sistemare in `docs/_config.yml`, indipendentemente:
+
+- [ ] `remote_theme: pmarsceill/just-the-docs` — il repo è stato **rinominato** in
+      `just-the-docs/just-the-docs`; oggi funziona per redirect, che non è garantito per sempre.
+      Da cambiare **dopo** aver visto la build verde, per non confondere due variabili;
+- [ ] `ga_tracking: UA-2709176-10` — Universal Analytics è dismesso dal 2023: la proprietà non
+      raccoglie più nulla. Togliere o passare a GA4 (`G-…`);
+- [ ] valutare un `repository: Allan-Nava/Go-DDD-Scaffold` esplicito, così `jekyll-github-metadata`
+      non deve dedurre il nwo dal contesto.
+
 ## Storico (item chiusi)
 
 Item con `status: done`: restano qui come traccia del perché, e la issue corrispondente viene

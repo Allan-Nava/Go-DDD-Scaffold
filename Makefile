@@ -25,8 +25,9 @@ check:
 	test -z "$$(gofmt -l $(GO_FILES))" || (gofmt -l $(GO_FILES) && exit 1)
 	go vet $(GO_PKGS)
 
-# Stesso gate della CI. Config in .golangci.yml; se manca il binario:
-#   go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+# Stesso gate della CI, che pinna v2.12.2 in go.yml: installare la stessa
+# versione, altrimenti i due gate possono divergere.
+#   go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
 .PHONY: lint
 lint:
 	golangci-lint run ./...
