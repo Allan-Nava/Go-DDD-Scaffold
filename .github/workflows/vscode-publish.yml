@@ -2,26 +2,39 @@ name: 'Vscode Extension Publish'
 on:
   push:
     tags:
-      - "*"
+      - "v*"
+#
+permissions:
+  contents: read
 #
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # A bare `run: cd extensions/vscode` does nothing: every run step starts a
+    # new shell, so the path has to be set per step instead.
+    defaults:
+      run:
+        working-directory: extensions/vscode
     steps:
-      - uses: actions/checkout@v3
-      - run: cd extensions/vscode 
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
+          cache: npm
+          cache-dependency-path: extensions/vscode/package-lock.json
       - run: npm ci
+      - run: npm run compile
+
       - name: Publish to Open VSX Registry
         uses: HaaLeo/publish-vscode-extension@v1
         with:
           pat: ${{ secrets.OPEN_VSX_TOKEN }}
-      #
+          packagePath: extensions/vscode
+
       - name: Publish to Visual Studio Marketplace
         uses: HaaLeo/publish-vscode-extension@v1
         with:
           pat: ${{ secrets.VS_MARKETPLACE_TOKEN }}
           registryUrl: https://marketplace.visualstudio.com
+          packagePath: extensions/vscode
 #

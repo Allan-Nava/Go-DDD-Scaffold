@@ -1,37 +1,77 @@
-
+// Command {{.ProjectName}} is the HTTP entrypoint of the service.
 package main
 
 import (
-    "log"
-    "os"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"go.uber.org/zap"
+
+	"{{.ProjectPath}}/database"
+	"{{.ProjectPath}}/env"
 )
 
+const shutdownTimeout = 10 * time.Second
 
 func main() {
-	// setup fiber stuff
-	f := fiber.New()
-	f.Use(logger.New())
-	f.Use(cors.New(cors.Config{
+	log := zap.Must(zap.NewProduction()).Sugar()
+	defer log.Sync() //nolint:errcheck // nothing useful to do on a failed flush
+
+	cfg, err := env.GetEnvConfig(log)
+	if err != nil {
+		log.Fatalw("cannot load the configuration", "err", err)
+	}
+
+	app := fiber.New(fiber.Config{
+		AppName:               "{{.ProjectName}}",
+		DisableStartupMessage: true,
+		ReadTimeout:           15 * time.Second,
+		WriteTimeout:          15 * time.Second,
+	})
+	// recover first, so a panic in any later middleware is still caught.
+	app.Use(recover.New())
+	app.Use(logger.New())
+	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
 		AllowHeaders: "Content-Type, Authorization",
 		AllowMethods: "GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE",
 	}))
-	f.Use(recover.New())
-    // Config
-	//config.SetEnvConfig()
-    log.Println("fiber ", f)
-    //
 
+	// The database is optional, so a freshly generated project runs without one.
+	if cfg.DBHost != "" {
+		db, err := database.InitDB(log, cfg)
+		if err != nil {
+			log.Fatalw("cannot open the database", "err", err)
+		}
+		_ = db // wire your repositories here
+	} else {
+		log.Warn("DB_HOST is empty: starting without a database")
+	}
 
-	//health check endpoint
-	f.Get("/health", func(c *fiber.Ctx) error {
-		return c.SendStatus(http.StatusOK)
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
 	})
 
-	f.Listen("0.0.0.0:8080")
-    //
+	go func() {
+		log.Infow("listening", "addr", cfg.HTTPAddr)
+		if err := app.Listen(cfg.HTTPAddr); err != nil {
+			log.Fatalw("server stopped", "err", err)
+		}
+	}()
+
+	// Wait for SIGINT/SIGTERM, then drain the in-flight requests.
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+
+	log.Infow("shutting down", "timeout", shutdownTimeout)
+	if err := app.ShutdownWithTimeout(shutdownTimeout); err != nil {
+		log.Errorw("shutdown did not complete", "err", err)
+	}
 }

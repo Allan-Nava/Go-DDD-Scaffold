@@ -1,13 +1,12 @@
-module TODO/{{.ProjectName}}
+module {{.ProjectPath}}
 
-go 1.18
+go 1.22
 
 require (
-	github.com/gofiber/fiber/v2 v2.32.0
-	github.com/ansrivas/fiberprometheus/v2 v2.6.0
-	github.com/caarlos0/env/v6 v6.9.1
-	gorm.io/driver/mysql v1.3.3
-	gorm.io/gorm v1.23.4
-	github.com/go-playground/validator v9.31.0+incompatible
-	go.uber.org/zap v1.24.0
+	github.com/caarlos0/env/v11 v11.4.1
+	github.com/gofiber/fiber/v2 v2.52.14
+	github.com/joho/godotenv v1.5.1
+	go.uber.org/zap v1.28.0
+	gorm.io/driver/mysql v1.6.0
+	gorm.io/gorm v1.31.2
 )

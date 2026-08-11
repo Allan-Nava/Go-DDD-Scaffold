@@ -1,33 +1,32 @@
-package config
+package database
 
 import (
 	"fmt"
+	"time"
 
-	"github.com/caarlos0/env/v6"
-    "log"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
-var CONFIGURATION *Configuration
+// InitDB opens the MySQL pool. Replace the config import with your own module
+// path, eg. "example.com/myservice/config".
+func InitDB(cfg *config.Configuration) (*gorm.DB, error) {
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=true&loc=UTC",
+		cfg.DBUsername, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName)
 
-type Configuration struct {
-	//
-	AppEnv      string `env:"APP_ENV"`
-	LogLevel    string `env:"LOG_LEVEL"`
-	RunningMode string `env:"RUNNING_MODE"` //fallback or main
-	DBName		string `env:"DB_NAME"`
-	DBUsername	string `env:"DB_USERNAME"`
-	DBPassword	string `env:"DB_PASSWORD"`
-	DBHost		string `env:"DB_HOST"`
-	DBPort		string `env:"DB_PORT"`
-	//
-}
-
-
-func SetEnvConfig() {
-	cfg := Configuration{}
-	if err := env.Parse(&cfg); err != nil {
-		fmt.Printf("%+v\n", err)
+	conn, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		// The DSN carries the password, so it never reaches the error.
+		return nil, fmt.Errorf("connect to %s:%s/%s: %w", cfg.DBHost, cfg.DBPort, cfg.DBName, err)
 	}
-	logrus.Info("\nload configuration OK")
-	CONFIGURATION = &cfg
+
+	pool, err := conn.DB()
+	if err != nil {
+		return nil, fmt.Errorf("open connection pool: %w", err)
+	}
+	pool.SetMaxIdleConns(cfg.DBIdleConn)
+	pool.SetMaxOpenConns(cfg.DBMaxConn)
+	pool.SetConnMaxLifetime(time.Hour)
+
+	return conn, nil
 }

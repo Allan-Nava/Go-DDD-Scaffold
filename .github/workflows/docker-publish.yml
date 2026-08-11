@@ -5,79 +5,58 @@ on:
     branches: [ main, "master" ]
     tags: [ v* ]
 #
+permissions:
+  contents: read
+  packages: write
+#
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+#
 jobs:
   docker:
     name: 'docker-build-and-push'
     runs-on: ubuntu-latest
     steps:
-      # Checkout the repository to the GitHub Actions runner
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # Repo metadata
-      - name: Repo metadata
-        id: repo
-        uses: actions/github-script@v3
+      # Tags and OCI labels, instead of hand-rolled shell with ::set-output
+      # (which GitHub has disabled).
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
         with:
-          script: |
-            const repo = await github.repos.get(context.repo)
-            return repo.data
-      # Prepare variables
-      - name: Prepare
-        id: prep
-        run: |
-          REG=ghcr.io
-          IMAGE=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')
-          DOCKER_IMAGE=${REG}/${IMAGE}
-          VERSION=nool
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            VERSION=nightly
-          elif [[ $GITHUB_REF == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/}
-          elif [[ $GITHUB_REF == refs/heads/* ]]; then
-            VERSION=$(echo ${GITHUB_REF#refs/heads/} | sed -r 's#/+#-#g')
-            if [ "${{ github.event.repository.default_branch }}" = "$VERSION" ]; then
-              VERSION=latest
-            fi
-          elif [[ $GITHUB_REF == refs/pull/* ]]; then
-            VERSION=pr-${{ github.event.number }}
-          fi
-          TAGS="${DOCKER_IMAGE}:${VERSION}"
-          if [[ $VERSION =~ ^v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-            MINOR=${VERSION%.*}
-            MAJOR=${MINOR%.*}
-            TAGS="$TAGS,${DOCKER_IMAGE}:${MINOR},${DOCKER_IMAGE}:${MAJOR},${DOCKER_IMAGE}:latest"
-          fi
-          echo ::set-output name=version::${VERSION}
-          echo ::set-output name=tags::${TAGS}
-          echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-      # Set up Buildx env
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=ref,event=branch
+            type=ref,event=pr
+            type=raw,value=latest,enable={{is_default_branch}}
 
-      # Login
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build image and push to registry
       - name: Build and push
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.prep.outputs.tags }}
-          labels: |
-            org.opencontainers.image.title=${{ fromJson(steps.repo.outputs.result).name }}
-            org.opencontainers.image.description=${{ fromJson(steps.repo.outputs.result).description }}
-            org.opencontainers.image.url=${{ fromJson(steps.repo.outputs.result).html_url }}
-            org.opencontainers.image.source=${{ fromJson(steps.repo.outputs.result).html_url }}
-            org.opencontainers.image.version=${{ steps.prep.outputs.version }}
-            org.opencontainers.image.created=${{ steps.prep.outputs.created }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.licenses=${{ fromJson(steps.repo.outputs.result).license.spdx_id }}
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Reuse the layer cache published alongside the image.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

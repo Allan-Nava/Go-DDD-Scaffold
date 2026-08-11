@@ -1,0 +1,9 @@
+# Keeps the build context small (faster builds) and secrets out of the image.
+.git
+.github
+bin/
+*.test
+*.out
+env/.env.*
+docker-compose.yml
+README.md

@@ -1,26 +1,43 @@
+// Package database opens the connection pool used by the repositories.
 package database
 
-
 import (
+	"fmt"
+	"time"
 
 	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+
+	"{{.ProjectPath}}/env"
 )
 
-func InitDB(log *zap.SugaredLogger, config *env.Configuration) *gorm.DB {
-	//
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", config.DBName, config.DBPassword, config.DbHost, config.DbPort, config.DbName)
+// InitDB opens the MySQL pool described by cfg and applies its limits.
+func InitDB(log *zap.SugaredLogger, cfg *env.Configuration) (*gorm.DB, error) {
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=true&loc=UTC",
+		cfg.DBUsername, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName)
+
 	conn, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("error connection on %s, err: %s", dsn, err.Error())
+		// The DSN carries the password, so it never reaches the error or the log.
+		return nil, fmt.Errorf("connect to %s:%s/%s: %w", cfg.DBHost, cfg.DBPort, cfg.DBName, err)
 	}
-	db, _ := conn.DB()
-	idle, _ := strconv.Atoi(config.DbIdleConn)
-	max, _ := strconv.Atoi(config.DbMaxConn)
 
-	db.SetMaxIdleConns(idle)
-	db.SetMaxOpenConns(max)
-	//
-	return conn
+	pool, err := conn.DB()
+	if err != nil {
+		return nil, fmt.Errorf("open connection pool: %w", err)
+	}
+	pool.SetMaxIdleConns(cfg.DBIdleConn)
+	pool.SetMaxOpenConns(cfg.DBMaxConn)
+	// Recycle connections so a proxy or a failover cannot hand out dead ones.
+	pool.SetConnMaxLifetime(time.Hour)
+	pool.SetConnMaxIdleTime(10 * time.Minute)
+
+	log.Infow("database connected",
+		"host", cfg.DBHost,
+		"name", cfg.DBName,
+		"max_idle", cfg.DBIdleConn,
+		"max_open", cfg.DBMaxConn,
+	)
+	return conn, nil
 }

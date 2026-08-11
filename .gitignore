@@ -6,6 +6,13 @@
 *.so
 *.dylib
 
+# Build output of this CLI — releases are produced by CI, never committed.
+# Never ignore a bare "scaffold": that is the package directory.
+/bin/
+/main
+scaffold-cli
+scaffold-cli-*
+
 # Test binary, built with `go test -c`
 *.test
 

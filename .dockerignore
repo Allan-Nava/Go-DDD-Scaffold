@@ -1,0 +1,13 @@
+# Keeps the build context small: without this, .git and the VSCode extension's
+# node_modules are uploaded to the daemon on every build.
+.git
+.github
+bin/
+docs/
+extensions/
+*.md
+!template/README.md
+*.test
+*.out
+# No bare "scaffold" entry: it would exclude the scaffold/ package.
+scaffold-cli*

@@ -6,48 +6,102 @@
 [![Go](https://github.com/Allan-Nava/Go-DDD-Scaffold/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/Allan-Nava/Go-DDD-Scaffold/actions/workflows/go.yml)
 
 
-Generate scaffold domain driven design project layout for Go.
+Generate a Domain Driven Design project layout for Go.
 
-The following is Go Domain Driven Design project layout scaffold generated:
+The templates are embedded in the binary, so `scaffold` runs anywhere — no
+`$GOPATH`, no repository checkout beside it.
+
+The generated layout:
 
 ```
-
-├── Dockerfile
+├── Dockerfile           # multi-stage build, alpine runtime
+├── docker-compose.yml   # service + MySQL
 ├── Makefile
 ├── README.md
+├── .dockerignore
 ├── cmd
-│   └── main.go
+│   └── main.go          # HTTP entrypoint: config, middlewares, graceful shutdown
 ├── config
-│   └── config.go
+│   └── config.yml       # non-secret tunables
 ├── database
-│   └── db.go
-├── env
-│    └── env.go
-└── docker-compose.yml
-
+│   └── db.go            # GORM connection pool
+└── env
+    ├── env.go           # configuration from the environment
+    └── .env.local       # local values
 ```
 
+Stack: [Fiber](https://github.com/gofiber/fiber) · [GORM](https://gorm.io) ·
+[zap](https://github.com/uber-go/zap) · [caarlos0/env](https://github.com/caarlos0/env) ·
+[godotenv](https://github.com/joho/godotenv).
 
 ## Installation
 
-Download Scaffold by using:
 ```sh
-$ go get -u github.com/Allan-Nava/Go-DDD-Scaffold
+go install github.com/Allan-Nava/Go-DDD-Scaffold@latest
+```
+
+The binary is named after the module; rename it to `scaffold` if you prefer, or
+build it directly:
+
+```sh
+git clone https://github.com/Allan-Nava/Go-DDD-Scaffold
+cd Go-DDD-Scaffold
+make build      # -> bin/scaffold
+```
+
+Or run it from the container image, generating into the current directory:
+
+```sh
+docker run --rm -v "$PWD:/work" ghcr.io/allan-nava/go-ddd-scaffold init
 ```
 
 ## Create a new project
 
-1. Going to your new project folder:
-
-```bash
-# change to project directory
-$ cd $GOPATH/src/path/to/project
-``` 
-
-2. Run `scaffold init`in the new project folder:
-
-
-```bash
-$ scaffold init
+```sh
+mkdir -p ~/code/github.com/myorg/myservice
+cd ~/code/github.com/myorg/myservice
+scaffold init
 ```
 
+Files are written to the **current directory**. The module path in `go.mod` is
+derived from the directory: a path under `github.com/myorg/myservice` yields
+`module github.com/myorg/myservice`.
+
+Then:
+
+```sh
+go mod tidy
+make run                        # listens on :8080
+curl localhost:8080/health      # 200
+```
+
+The service starts without a database when `DB_HOST` is empty.
+
+### Flags
+
+| Flag | Effect |
+| --- | --- |
+| `scaffold init [dir]` | generate into `dir` instead of the current directory |
+| `--force`, `-f` | overwrite files that already exist |
+| `--debug` | trace what the generator is doing |
+
+Without `--force`, existing files are left untouched and reported as skipped, so
+re-running `scaffold init` in a live project is safe.
+
+## Development
+
+```sh
+make check   # gofmt + go vet
+make test    # unit tests
+make e2e     # generates a project in a temp dir and compiles it for real
+make docker  # build the container image
+```
+
+`make e2e` is the gate that matters: it proves the templates still emit
+buildable Go. See [CLAUDE.md](CLAUDE.md) for the working rules and
+[docs/audit-2026-08-11.md](docs/audit-2026-08-11.md) for the technical audit.
+
+## VSCode extension
+
+`extensions/vscode/` holds a companion extension. Its generation command is
+currently a stub — see the audit for details.

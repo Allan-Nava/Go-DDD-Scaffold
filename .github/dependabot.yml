@@ -9,7 +9,11 @@ updates:
     directory: /
     schedule:
       interval: weekly
-  - package-ecosystem: gomod
-    directory: /tests
+  - package-ecosystem: npm
+    directory: /extensions/vscode
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /
     schedule:
       interval: weekly

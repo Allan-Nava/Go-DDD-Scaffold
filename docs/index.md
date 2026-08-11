@@ -2,53 +2,75 @@
 layout: default
 title: Home
 nav_order: 1
-description: "Go DD Scaffold docs"
+description: "Go DDD Scaffold docs"
 permalink: /
-last_modified_date: 2022-10-21T21:54:08+0000
+last_modified_date: 2026-08-11T00:00:00+0000
 ---
 
 # Go Domain Driven Design Scaffold official documentation
 
-Generate scaffold domain driven design project layout for Go.
+Generate a Domain Driven Design project layout for Go.
 
-The following is Go Domain Driven Design project layout scaffold generated:
+The templates are embedded in the binary: `scaffold` runs anywhere, with no
+`$GOPATH` and no repository checkout beside it.
+
+The generated layout:
 
 ```
-├── Dockerfile
+├── Dockerfile           # multi-stage build, alpine runtime
+├── docker-compose.yml   # service + MySQL
 ├── Makefile
 ├── README.md
+├── .dockerignore
 ├── cmd
-│   └── main.go
+│   └── main.go          # HTTP entrypoint: config, middlewares, graceful shutdown
 ├── config
-│   └── config.go
+│   └── config.yml       # non-secret tunables
 ├── database
-│   └── db.go
-├── utils
-│    ├── api_messages.go
-│    └── env.go
-└── docker-compose.yml
+│   └── db.go            # GORM connection pool
+└── env
+    ├── env.go           # configuration from the environment
+    └── .env.local       # local values
 ```
 
+Stack: Fiber · GORM (MySQL) · zap · caarlos0/env · godotenv.
 
-## Installation
+## Install
 
-Download Scaffold by using:
 ```sh
-$ go get -u github.com/Allan-Nava/Go-DDD-Scaffold
+go install github.com/Allan-Nava/Go-DDD-Scaffold@latest
 ```
 
 ## Create a new project
 
-1. Going to your new project folder:
+```sh
+mkdir -p ~/code/github.com/myorg/myservice
+cd ~/code/github.com/myorg/myservice
+scaffold init
 
-```bash
-# change to project directory
-$ cd $GOPATH/src/path/to/project
-``` 
-
-2. Run `scaffold init`in the new project folder:
-
-
-```bash
-$ scaffold init
+go mod tidy
+make run                        # listens on :8080
+curl localhost:8080/health      # 200
 ```
+
+Files are written to the **current directory**, and the module path in `go.mod`
+is derived from it: a project under `github.com/myorg/myservice` yields
+`module github.com/myorg/myservice`.
+
+The service starts without a database when `DB_HOST` is empty.
+
+### Flags
+
+| Flag | Effect |
+| --- | --- |
+| `scaffold init [dir]` | generate into `dir` instead of the current directory |
+| `--force`, `-f` | overwrite files that already exist |
+| `--debug` | trace what the generator is doing |
+
+Without `--force` existing files are left untouched and reported as skipped, so
+re-running `scaffold init` in a live project is safe.
+
+## Audit
+
+The technical audit of the generator, the applied fixes and the remaining debt
+are in [audit-2026-08-11](audit-2026-08-11.md).

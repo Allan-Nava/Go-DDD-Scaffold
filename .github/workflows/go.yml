@@ -6,22 +6,89 @@ on:
   pull_request:
     branches: [ "main" ]
 #
-env:
-  APP_ENV: runner
+permissions:
+  contents: read
+#
+concurrency:
+  # A new push cancels the runs still in flight for the same ref.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 #
 jobs:
   build:
+    name: build & test
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        go-version: [ '1.18.x', '1.19.x' ]
+        go-version: [ '1.22.x', '1.23.x', '1.24.x' ]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
+          cache: true
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "not gofmt-clean:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
       - name: Build
         run: go build -v ./...
-    #
-#
+
+      - name: Test
+        run: go test -race ./...
+
+  generated-project-builds:
+    # The whole point of the CLI is to emit compilable code, so the generated
+    # project is built for real: unit tests only check syntax and formatting.
+    name: generated project compiles
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+          cache: true
+
+      - name: Build the CLI
+        run: go build -o /tmp/scaffold .
+
+      - name: Generate a project
+        run: |
+          mkdir -p /tmp/gen/github.com/acme/myservice
+          cd /tmp/gen/github.com/acme/myservice
+          /tmp/scaffold init
+
+      - name: Compile what was generated
+        working-directory: /tmp/gen/github.com/acme/myservice
+        run: |
+          go mod tidy
+          go build ./...
+          go vet ./...
+          test -z "$(gofmt -l .)"
+
+      - name: Smoke test the health endpoint
+        working-directory: /tmp/gen/github.com/acme/myservice
+        env:
+          HTTP_ADDR: 127.0.0.1:18080
+          APP_ENV: runner
+          DB_HOST: ""
+        run: |
+          go build -o /tmp/svc ./cmd
+          /tmp/svc & pid=$!
+          for _ in $(seq 1 20); do
+            curl -fsS --max-time 2 http://127.0.0.1:18080/health && break
+            sleep 1
+          done
+          curl -fsS --max-time 5 -o /dev/null -w 'health: HTTP %{http_code}\n' http://127.0.0.1:18080/health
+          kill -TERM $pid
+          wait $pid || true
