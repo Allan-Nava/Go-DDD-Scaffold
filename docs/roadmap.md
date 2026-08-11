@@ -10,7 +10,15 @@ description: "Milestone del backlog — pagina generata da docs/backlog.md"
 <!-- GENERATO da docs/scripts/generate-roadmap.py — NON editare a mano. -->
 > Pagina **generata** da [`docs/scripts/generate-roadmap.py`](scripts/generate-roadmap.py) leggendo [`docs/backlog.md`](backlog.md) (unica sorgente). Le milestone sono quelle dichiarate dagli item: non c'è un elenco fisso. Affianca la [board issue di GitHub](https://github.com/Allan-Nava/Go-DDD-Scaffold/milestones).
 
-_3 milestone · 6 item pianificati (6 open · 0 done)._
+_4 milestone · 7 item pianificati (6 open · 1 done)._
+
+## Audit 2026-08-11
+
+_0 open · 1 done_
+
+| id | Titolo | Priorità | Status |
+|----|--------|----------|--------|
+| `audit-2026-08-11` | Audit 2026-08-11: risanamento del generatore (32 finding) | high | done |
 
 ## Estensione VSCode
 
