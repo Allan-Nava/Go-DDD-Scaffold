@@ -1,71 +1,84 @@
-# go-ddd-scaffold README
+# GO Domain Driven Design Scaffold
 
-This is the README for your extension "go-ddd-scaffold". After writing up a brief description, we recommend including the following sections.
+Generate a Go [Domain Driven Design project layout](https://github.com/Allan-Nava/Go-DDD-Scaffold)
+from inside VS Code.
 
-## Features
-
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+The extension is a **wrapper around the `scaffold` CLI**: it does not carry its own
+copy of the templates. That is deliberate — the templates live in exactly one
+place (embedded in the CLI binary), so the editor and the command line can never
+generate different projects.
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+The `scaffold` CLI:
+
+```sh
+go install github.com/Allan-Nava/Go-DDD-Scaffold@latest
+```
+
+The extension looks for it on the `PATH` and then in the Go bin directories
+(`$GOBIN`, `$GOPATH/bin`, `~/go/bin`) — that last part matters because a GUI
+editor does not read your shell profile, so a CLI that works in the terminal can
+still look missing from the editor. `go install` names the binary after the
+module (`Go-DDD-Scaffold`), so both that name and `scaffold` are recognised.
+
+If it is not found, the extension offers to run the `go install` above in a
+terminal.
+
+## Usage
+
+- **Command palette**: `Go DDD: New Scaffold Project`
+- **Explorer**: right-click a folder → `New Scaffold Project`
+
+The project is generated in the folder you pick (the right-clicked one, the
+workspace folder, or one chosen from a dialog).
+
+If the folder is not empty you are asked what to do:
+
+| Choice | Effect |
+| --- | --- |
+| Keep existing files | generates only what is missing |
+| Overwrite existing files | passes `--force`, replacing `cmd/main.go`, `go.mod`, … |
+
+Nothing is ever overwritten without that explicit answer.
+
+Then, in the generated project:
+
+```sh
+go mod tidy
+make run                        # listens on :8080
+curl localhost:8080/health      # 200
+```
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+| Setting | Default | Description |
+| --- | --- | --- |
+| `goDddScaffold.binaryPath` | `""` | Path to the `scaffold` CLI. Empty means "look it up on the `PATH`, then in the Go bin directories". |
 
-For example:
+## Output
 
-This extension contributes the following settings:
+Every run appends the CLI's per-file output to the **Go DDD Scaffold** output
+channel, so a generation can be inspected after the notification is gone.
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+## Known limitations
 
-## Known Issues
+- The `publisher` and `version` fields of this extension are not yet aligned with
+  the repository's release tags. See the repository backlog.
+- There are no integration tests running in a real editor host: the tested part
+  is the CLI wrapper (binary discovery, argv, output parsing), which is where the
+  logic lives.
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+## Development
+
+```sh
+npm install
+npm run compile   # tsc, strict
+npm run lint      # eslint
+npm test          # unit tests, no VS Code host needed
+npm run webpack   # dev bundle into dist/
+```
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+See [CHANGELOG.md](CHANGELOG.md).

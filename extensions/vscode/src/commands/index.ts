@@ -1,3 +1,3 @@
 //
-export * from "./new-scaffold.command";
+export * from "./init";
 //

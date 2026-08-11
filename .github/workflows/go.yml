@@ -30,6 +30,28 @@ jobs:
       - name: generated-pages-check
         run: python3 docs/scripts/generate-roadmap.py --check
 
+  extension:
+    # Niente verificava l'estensione a ogni push: `vscode-publish.yml` la compila
+    # solo al momento di pubblicarla, cioè troppo tardi.
+    name: vscode extension
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: extensions/vscode
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: extensions/vscode/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      # Il bundle di produzione è ciò che finisce sui marketplace: va provato qui,
+      # non scoperto rotto durante il publish su tag.
+      - run: npm run vscode:prepublish
+
   lint:
     # gofmt + go vet non coprono i valori di ritorno ignorati: il bug più costoso
     # dell'audit 2026-08-11 era un errore di filepath.Walk scartato in silenzio.

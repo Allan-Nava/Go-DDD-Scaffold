@@ -1,14 +1,13 @@
 {
   "name": "go-ddd-scaffold",
   "displayName": "GO Domain Driven Design Scaffold",
-  "description": "",
+  "description": "Generate a Go Domain Driven Design project layout from the editor, by driving the scaffold CLI.",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.74.0"
   },
   "categories": [
-    "Snippets",
-    "Programming Languages"
+    "Other"
   ],
   "keywords": [
     "go",
@@ -17,32 +16,29 @@
     "domain driven design",
     "pattern"
   ],
-  "activationEvents": [
-    "onCommand:go-ddd-scaffold.helloWorld",
-    "onCommand:extension.new-scaffold"
-  ],
   "main": "./dist/extension",
   "contributes": {
-    "configuration": [
-      {
-        "title": "Go Domain Driven Design Scaffold"
+    "configuration": {
+      "title": "Go Domain Driven Design Scaffold",
+      "properties": {
+        "goDddScaffold.binaryPath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to the `scaffold` CLI. Leave empty to look it up on the `PATH` and then in the Go bin directories (`$GOBIN`, `$GOPATH/bin`, `~/go/bin`) \u2014 needed because a GUI editor does not read the shell profile. Install the CLI with `go install github.com/Allan-Nava/Go-DDD-Scaffold@latest`."
+        }
       }
-    ],
+    },
     "commands": [
       {
-        "command": "go-ddd-scaffold.helloWorld",
-        "title": "Hello World"
-      },
-      {
-        "command": "extension.new-scaffold",
-        "title": "Go DDD: New Scaffold",
-        "icon": "assets/logo.png"
+        "command": "go-ddd-scaffold.init",
+        "title": "New Scaffold Project",
+        "category": "Go DDD"
       }
     ],
     "menus": {
       "explorer/context": [
         {
-          "command": "extension.new-scaffold",
+          "command": "go-ddd-scaffold.init",
           "group": "scaffoldGroup@1",
           "when": "explorerResourceIsFolder"
         }
@@ -53,32 +49,20 @@
     "vscode:prepublish": "webpack --mode production",
     "webpack": "webpack --mode development",
     "webpack-dev": "webpack --mode development --watch",
-    "test-compile": "tsc -p ./",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "test": "npm run compile && node --test \"out/**/*.test.js\""
   },
   "devDependencies": {
-    "@types/glob": "^8.0.0",
-    "@types/lodash": "^4.14.191",
-    "@types/mocha": "^10.0.1",
     "@types/node": "16.x",
     "@types/vscode": "^1.74.0",
     "@typescript-eslint/eslint-plugin": "^5.45.0",
     "@typescript-eslint/parser": "^5.45.0",
-    "@vscode/test-electron": "^2.2.0",
     "eslint": "^8.28.0",
-    "glob": "^8.0.3",
-    "mocha": "^10.1.0",
     "ts-loader": "^9.4.1",
     "typescript": "^4.9.3",
     "webpack": "^5.76.0",
     "webpack-cli": "^5.0.0"
-  },
-  "dependencies": {
-    "change-case": "^4.1.2",
-    "lodash": "^4.17.21",
-    "mkdirp": "^0.5.6",
-    "node-fetch": "^3.3.0",
-    "semver": "^7.3.8"
   }
 }

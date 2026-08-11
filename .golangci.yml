@@ -32,6 +32,9 @@ linters:
         - name: var-naming
 
   exclusions:
+    paths:
+      # Codice Go di terze parti finito sotto le dipendenze npm dell'estensione.
+      - extensions/
     # Nei test la verbosità non paga: t.Setenv/t.TempDir già falliscono da soli.
     rules:
       - path: _test\.go

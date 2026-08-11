@@ -1,14 +1,21 @@
 {
 	"compilerOptions": {
+		// moduleResolution is left implicit: "commonjs" already implies node
+		// resolution, and spelling it out trips the deprecation error in TS 6+.
 		"module": "commonjs",
-		"target": "es6",
+		// ES2020 for `?.` / `??` and String.trimStart; VS Code 1.74 runs Node 16.
+		"target": "ES2020",
+		"lib": ["ES2020"],
 		"outDir": "out",
-		"lib": ["es6"],
-		"sourceMap": true,
 		"rootDir": "src",
-		"strict": false,
+		"sourceMap": true,
+		// strict was off: the rewrite relies on it, in particular for the
+		// `uri?: vscode.Uri` the context menu may or may not pass.
+		"strict": true,
 		"noUnusedLocals": true,
-		"noUnusedParameters": true
-	  },
-	"exclude": ["node_modules", ".vscode-test"]
+		"noUnusedParameters": true,
+		"noImplicitOverride": true,
+		"forceConsistentCasingInFileNames": true
+	},
+	"exclude": ["node_modules", ".vscode-test", "dist", "out"]
 }

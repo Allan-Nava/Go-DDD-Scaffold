@@ -79,37 +79,6 @@ make backlog-sync-apply       # applica: crea/aggiorna/chiude le issue e le mile
 
 ## Item attivi
 
-### `vscode-extension-rewrite` — Estensione VSCode: il comando non genera nulla, serve una riscrittura
-
-- **status**: open
-- **priority**: high
-- **labels**: bug, vscode, javascript
-- **milestone**: Estensione VSCode
-- **ref**: [audit-2026-08-11.md](audit-2026-08-11.md)
-
-Il comando `extension.new-scaffold` non scrive **nessun** file: è il residuo di un generatore
-Flutter/BLoC riadattato male. Verificato leggendo `extensions/vscode/src/`:
-
-- `createScaffoldTemplate()` calcola un target `…_bloc.dart` (**Dart**, non Go) e la `writeFile` è
-  **commentata**: la funzione fa solo `console.log` e un `throw` se il file esiste;
-- `getScaffoldTemplate()` (in `src/templates/scaffold.template.ts`) non è importato da nessuna parte;
-- i file `src/templates/**/*.tpl` **non sono letti da alcun codice**: sono documentazione morta;
-- `workspace.getConfiguration("bloc").get("newBlocTemplate.createDirectory")` legge il namespace di
-  configurazione di un'**altra** estensione;
-- `createDirectoryV2()` non attende `mkdirp` → race sulla creazione della directory;
-- la logica è duplicata fra `extension.ts` e `commands/new-scaffold.command.ts`; quest'ultimo non è
-  mai registrato e usa `mkdirp` con callback, API rimossa in mkdirp v1+;
-- resta un comando placeholder `go-ddd-scaffold.helloWorld`.
-
-Serve una **riscrittura**, non una patch. Decisione preliminare da prendere: riscrivere l'estensione
-come wrapper del binario `scaffold` (una sola implementazione di verità, l'estensione invoca la CLI)
-oppure reimplementare la generazione in TypeScript (due implementazioni da tenere gemelle).
-La prima elimina per costruzione il drift fra i due set di template.
-
-In questo passaggio sono stati corretti solo i `.tpl` gemelli (errori di compilazione;
-`database/db.tpl` era un duplicato identico di `config/config.tpl`), per rispettare la regola dei
-gemelli di `CLAUDE.md`.
-
 ### `vscode-extension-publish-metadata` — Estensione VSCode: `publisher: "None"` e versione 0.0.1 → il publish fallisce
 
 - **status**: open
@@ -127,11 +96,12 @@ Da fare:
 
 - [ ] impostare il `publisher` reale (l'ID del publisher su marketplace.visualstudio.com);
 - [ ] allineare `version` al tag, o derivarla dal tag nel workflow (`npm version --no-git-tag-version`);
-- [ ] `description` è vuota;
+- [x] ~~`description` è vuota~~ — compilata nella riscrittura;
 - [ ] valutare se il publish debba essere gated (solo tag che toccano `extensions/`), per non
       pubblicare l'estensione a ogni release della CLI.
 
-Dipende da `vscode-extension-rewrite`: pubblicare un'estensione che non genera nulla non ha senso.
+Non è più bloccato da `vscode-extension-rewrite` (chiuso: l'estensione ora funziona). Resta da
+fare perché richiede **il tuo publisher ID** del Marketplace, che non posso indovinare.
 
 ### `config-yml-double-source` — `config/config.yml` non è letto: doppia fonte di configurazione
 
@@ -369,3 +339,61 @@ Da fare:
 
 Non toccato nell'audit del 2026-08-11: il workflow non è eseguibile in locale, e modificarlo alla
 cieca rischia di rompere la pubblicazione dei binari.
+
+### `vscode-extension-rewrite` — Estensione VSCode: il comando non genera nulla, serve una riscrittura
+
+- **status**: done
+- **priority**: high
+- **labels**: bug, vscode, javascript
+- **milestone**: Estensione VSCode
+- **ref**: [audit-2026-08-11.md](audit-2026-08-11.md)
+
+> **CHIUSO**: riscritta come **wrapper della CLI**. Delle due opzioni ho preso la prima
+> (l'estensione invoca il binario `scaffold`): elimina il drift fra i due set di template per
+> costruzione, perche il secondo set non esiste piu.
+>
+> Struttura: `src/scaffold/cli.ts` e **puro** (non importa `vscode`) e contiene tutta la logica -
+> scoperta del binario, argv, parsing dell'output; l'API dell'editor vive solo in `extension.ts` e
+> `commands/init.ts`. Quella separazione e cio che rende la parte rischiosa testabile senza un host
+> VSCode: **15 test** con `node --test`, che girano anche in CI.
+>
+> Dettagli che il codice vecchio sbagliava e che ora sono coperti: `go install` produce un binario
+> chiamato `Go-DDD-Scaffold` (dal nome del modulo), non `scaffold`, quindi la scoperta cerca
+> entrambi; cerca anche in `$GOBIN`/`$GOPATH/bin`/`~/go/bin`, perche un editor GUI non legge il
+> profilo della shell e un CLI che funziona nel terminale sembra assente dall'editor; un programma
+> **omonimo** che non risponde `scaffold version` viene scartato invece di essere eseguito con
+> `init`. Se manca, l'estensione propone il `go install` in un terminale.
+>
+> Rimosso: `src/templates/` (secondo set, mai letto), `src/utils/get-selected-text.ts` (codice
+> Dart), il comando placeholder `helloWorld`, il riferimento rotto a `assets/logo.png`, e i **5
+> runtime deps** (`change-case`, `lodash`, `mkdirp`, `node-fetch`, `semver`) che servivano solo al
+> codice morto: l'estensione ora ha **zero dipendenze runtime**. `tsconfig` passa a `strict: true`.
+>
+> Verificato contro il binario **reale**, non contro un mock: scoperta OK, 13 file creati, re-run
+> 0 creati / 13 skippati, `--force` 13 riscritti, `module github.com/acme/svc` corretto; con un
+> PATH pulito un binario estraneo viene rifiutato con `BinaryNotFoundError` e il fallback su GOBIN
+> lo trova. Nuovo job CI `vscode extension` (lint + test + bundle di produzione): prima niente la
+> verificava a ogni push, `vscode-publish.yml` la compilava solo al momento di pubblicarla.
+
+Il comando `extension.new-scaffold` non scrive **nessun** file: è il residuo di un generatore
+Flutter/BLoC riadattato male. Verificato leggendo `extensions/vscode/src/`:
+
+- `createScaffoldTemplate()` calcola un target `…_bloc.dart` (**Dart**, non Go) e la `writeFile` è
+  **commentata**: la funzione fa solo `console.log` e un `throw` se il file esiste;
+- `getScaffoldTemplate()` (in `src/templates/scaffold.template.ts`) non è importato da nessuna parte;
+- i file `src/templates/**/*.tpl` **non sono letti da alcun codice**: sono documentazione morta;
+- `workspace.getConfiguration("bloc").get("newBlocTemplate.createDirectory")` legge il namespace di
+  configurazione di un'**altra** estensione;
+- `createDirectoryV2()` non attende `mkdirp` → race sulla creazione della directory;
+- la logica è duplicata fra `extension.ts` e `commands/new-scaffold.command.ts`; quest'ultimo non è
+  mai registrato e usa `mkdirp` con callback, API rimossa in mkdirp v1+;
+- resta un comando placeholder `go-ddd-scaffold.helloWorld`.
+
+Serve una **riscrittura**, non una patch. Decisione preliminare da prendere: riscrivere l'estensione
+come wrapper del binario `scaffold` (una sola implementazione di verità, l'estensione invoca la CLI)
+oppure reimplementare la generazione in TypeScript (due implementazioni da tenere gemelle).
+La prima elimina per costruzione il drift fra i due set di template.
+
+In questo passaggio sono stati corretti solo i `.tpl` gemelli (errori di compilazione;
+`database/db.tpl` era un duplicato identico di `config/config.tpl`), per rispettare la regola dei
+gemelli di `CLAUDE.md`.

@@ -123,5 +123,13 @@ Dependabot and third-party reports are never read or closed.
 
 ## VSCode extension
 
-`extensions/vscode/` holds a companion extension. Its generation command is
-currently a stub — see the audit for details.
+`extensions/vscode/` holds a companion extension that **drives this CLI** rather
+than carrying its own copy of the templates — so the editor and the command line
+can never generate different projects.
+
+- Command palette: `Go DDD: New Scaffold Project`
+- Explorer: right-click a folder → `New Scaffold Project`
+
+It finds the CLI on the `PATH` and in `$GOBIN` / `$GOPATH/bin` / `~/go/bin`, and
+offers to `go install` it when missing. See
+[extensions/vscode/README.md](extensions/vscode/README.md).

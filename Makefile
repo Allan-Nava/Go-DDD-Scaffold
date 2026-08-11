@@ -1,4 +1,11 @@
 VERSION ?= dev
+
+# `./...` e `gofmt .` scendono in extensions/vscode/node_modules, che dopo un
+# `npm install` puo contenere codice Go di terze parti (flatted ne ha un
+# package). Si restringe ai .go tracciati e ai package fuori da extensions/.
+GO_FILES := $(shell git ls-files '*.go')
+GO_PKGS  := $(shell go list ./... | grep -v '/extensions/')
+
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
 .PHONY: build
@@ -11,12 +18,12 @@ install:
 
 .PHONY: test
 test:
-	go test -race ./...
+	go test -race $(GO_PKGS)
 
 .PHONY: check
 check:
-	test -z "$$(gofmt -l .)" || (gofmt -l . && exit 1)
-	go vet ./...
+	test -z "$$(gofmt -l $(GO_FILES))" || (gofmt -l $(GO_FILES) && exit 1)
+	go vet $(GO_PKGS)
 
 # Stesso gate della CI. Config in .golangci.yml; se manca il binario:
 #   go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest

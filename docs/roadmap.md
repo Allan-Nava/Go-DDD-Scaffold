@@ -10,7 +10,7 @@ description: "Milestone del backlog — pagina generata da docs/backlog.md"
 <!-- GENERATO da docs/scripts/generate-roadmap.py — NON editare a mano. -->
 > Pagina **generata** da [`docs/scripts/generate-roadmap.py`](scripts/generate-roadmap.py) leggendo [`docs/backlog.md`](backlog.md) (unica sorgente). Le milestone sono quelle dichiarate dagli item: non c'è un elenco fisso. Affianca la [board issue di GitHub](https://github.com/Allan-Nava/Go-DDD-Scaffold/milestones).
 
-_4 milestone · 8 item pianificati (4 open · 4 done)._
+_4 milestone · 8 item pianificati (3 open · 5 done)._
 
 ## Audit 2026-08-11
 
@@ -22,12 +22,12 @@ _0 open · 1 done_
 
 ## Estensione VSCode
 
-_2 open · 0 done_
+_1 open · 1 done_
 
 | id | Titolo | Priorità | Status |
 |----|--------|----------|--------|
-| `vscode-extension-rewrite` | Estensione VSCode: il comando non genera nulla, serve una riscrittura | high | open |
 | `vscode-extension-publish-metadata` | Estensione VSCode: `publisher: "None"` e versione 0.0.1 → il publish fallisce | medium | open |
+| `vscode-extension-rewrite` | Estensione VSCode: il comando non genera nulla, serve una riscrittura | high | done |
 
 ## Hardening CI/CD
 

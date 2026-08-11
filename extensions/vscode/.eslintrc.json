@@ -2,14 +2,22 @@
     "root": true,
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
-        "ecmaVersion": 6,
+        "ecmaVersion": 2020,
         "sourceType": "module"
     },
     "plugins": [
         "@typescript-eslint"
     ],
     "rules": {
-        "@typescript-eslint/naming-convention": "warn",
+        "@typescript-eslint/naming-convention": [
+            "warn",
+            { "selector": "default", "format": ["camelCase"], "leadingUnderscore": "allow" },
+            { "selector": "variable", "format": ["camelCase", "UPPER_CASE", "PascalCase"] },
+            { "selector": "parameter", "format": ["camelCase"], "leadingUnderscore": "allow" },
+            { "selector": "typeLike", "format": ["PascalCase"] },
+            { "selector": "enumMember", "format": ["PascalCase", "UPPER_CASE"] },
+            { "selector": "objectLiteralProperty", "format": null }
+        ],
         "@typescript-eslint/semi": "warn",
         "curly": "warn",
         "eqeqeq": "warn",
