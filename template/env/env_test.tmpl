@@ -1,0 +1,76 @@
+package env
+
+import (
+	"testing"
+
+	goenv "github.com/caarlos0/env/v11"
+)
+
+// parse builds a Configuration from an explicit environment map instead of the
+// process environment, so these tests are hermetic: the shell that runs them
+// cannot make them pass or fail.
+func parse(t *testing.T, environment map[string]string) Configuration {
+	t.Helper()
+
+	cfg := Configuration{}
+	if err := goenv.ParseWithOptions(&cfg, goenv.Options{Environment: environment}); err != nil {
+		t.Fatalf("parse environment: %v", err)
+	}
+	return cfg
+}
+
+// The envDefault tags are what keeps `make run` working with no configuration at
+// all. They break silently, so they are pinned here.
+func TestConfigurationDefaults(t *testing.T) {
+	cfg := parse(t, map[string]string{})
+
+	for _, tc := range []struct {
+		field string
+		got   any
+		want  any
+	}{
+		{"AppEnv", cfg.AppEnv, "local"},
+		{"LogLevel", cfg.LogLevel, "debug"},
+		{"RunningMode", cfg.RunningMode, "main"},
+		{"HTTPAddr", cfg.HTTPAddr, "0.0.0.0:8080"},
+		{"DBPort", cfg.DBPort, "3306"},
+		{"DBIdleConn", cfg.DBIdleConn, 10},
+		{"DBMaxConn", cfg.DBMaxConn, 100},
+	} {
+		if tc.got != tc.want {
+			t.Errorf("%s = %v, want %v", tc.field, tc.got, tc.want)
+		}
+	}
+
+	// An empty DB_HOST is what makes the service start without a database.
+	if cfg.DBHost != "" {
+		t.Errorf("DBHost = %q, want empty by default", cfg.DBHost)
+	}
+}
+
+func TestConfigurationReadsTheEnvironment(t *testing.T) {
+	cfg := parse(t, map[string]string{
+		"APP_ENV":      "prod",
+		"HTTP_ADDR":    "127.0.0.1:9000",
+		"DB_HOST":      "db.internal",
+		"DB_NAME":      "orders",
+		"DB_USERNAME":  "svc",
+		"DB_PASSWORD":  "secret",
+		"DB_MAX_CONN":  "7",
+		"DB_IDLE_CONN": "3",
+	})
+
+	if cfg.AppEnv != "prod" {
+		t.Errorf("AppEnv = %q, want %q", cfg.AppEnv, "prod")
+	}
+	if cfg.HTTPAddr != "127.0.0.1:9000" {
+		t.Errorf("HTTPAddr = %q, want %q", cfg.HTTPAddr, "127.0.0.1:9000")
+	}
+	if cfg.DBHost != "db.internal" {
+		t.Errorf("DBHost = %q, want %q", cfg.DBHost, "db.internal")
+	}
+	// The pool sizes are ints: a typo in the tag would silently leave them at 0.
+	if cfg.DBMaxConn != 7 || cfg.DBIdleConn != 3 {
+		t.Errorf("pool = idle %d / max %d, want 3 / 7", cfg.DBIdleConn, cfg.DBMaxConn)
+	}
+}

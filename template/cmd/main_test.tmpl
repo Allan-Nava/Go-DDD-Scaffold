@@ -1,0 +1,39 @@
+package main
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+// TestHealthEndpoint drives the router through app.Test, so it needs no port and
+// no database: it is the smoke test to keep green while you add routes.
+func TestHealthEndpoint(t *testing.T) {
+	app := newApp("{{.ProjectName}}-test")
+
+	res, err := app.Test(httptest.NewRequest(http.MethodGet, "/health", nil))
+	if err != nil {
+		t.Fatalf("request to /health failed: %v", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("GET /health = %d, want %d", res.StatusCode, http.StatusOK)
+	}
+}
+
+// TestUnknownRouteIs404 pins the default behaviour: a route that does not exist
+// must not be answered by a catch-all added by mistake.
+func TestUnknownRouteIs404(t *testing.T) {
+	app := newApp("{{.ProjectName}}-test")
+
+	res, err := app.Test(httptest.NewRequest(http.MethodGet, "/does-not-exist", nil))
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusNotFound {
+		t.Errorf("GET /does-not-exist = %d, want %d", res.StatusCode, http.StatusNotFound)
+	}
+}

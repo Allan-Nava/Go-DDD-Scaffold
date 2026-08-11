@@ -133,73 +133,6 @@ Da fare:
 
 Dipende da `vscode-extension-rewrite`: pubblicare un'estensione che non genera nulla non ha senso.
 
-### `release-yml-pin-and-labels` — `release.yml`: action di terze parti non pinnata a SHA, job etichettati male
-
-- **status**: open
-- **priority**: medium
-- **labels**: github_actions, documentation
-- **milestone**: Hardening CI/CD
-- **ref**: [audit-2026-08-11.md](audit-2026-08-11.md)
-
-`.github/workflows/release.yml` usa `Allan-Nava/go-release.action@v1.5.01` su **tutti** i job di
-release, con `permissions: write-all`. Una action di terze parti riferita per tag mutabile e con
-permessi totali sul token è la superficie di attacco tipica della supply chain CI: chi controlla quel
-tag può riscrivere gli asset di release.
-
-Da fare:
-
-- [ ] pinnare la action al **SHA** del commit (`@<sha40>`), non al tag;
-- [ ] restringere `permissions` al minimo per job (`contents: write` sui job che pubblicano);
-- [ ] correggere le label dei job: `release-macos-amd64` si chiama `release macos/32` ma builda amd64;
-- [ ] rimuovere i blocchi commentati (macos/386) o riattivarli, non lasciarli a metà.
-
-Non toccato nell'audit del 2026-08-11: il workflow non è eseguibile in locale, e modificarlo alla
-cieca rischia di rompere la pubblicazione dei binari.
-
-### `golangci-lint` — Nessun linter oltre gofmt + go vet
-
-- **status**: open
-- **priority**: medium
-- **labels**: enhancement, go, github_actions
-- **milestone**: Hardening CI/CD
-- **ref**: [audit-2026-08-11.md](audit-2026-08-11.md)
-
-La CI esegue `gofmt -l` e `go vet ./...`, che non coprono la classe di errori più frequente in questo
-repo: valori di ritorno ignorati. Il bug storico più costoso dell'audit era esattamente questo — il
-valore di ritorno di `filepath.Walk` scartato in `getTemplateSets()`, che nascondeva ogni errore di
-I/O sui template. `errcheck` lo avrebbe segnalato.
-
-Da fare:
-
-- [ ] aggiungere `.golangci.yml` con almeno `errcheck`, `ineffassign`, `misspell`, `revive`;
-- [ ] job `golangci-lint` in `go.yml` (action `golangci/golangci-lint-action`, pinnata);
-- [ ] target `make lint` per avere lo stesso gate in locale;
-- [ ] valutare se estenderlo anche al **progetto generato** (un linter sui template renderebbe
-      esplicite le convenzioni che il template insegna a chi lo usa).
-
-### `generated-project-has-no-tests` — Il progetto generato non contiene nessun test
-
-- **status**: open
-- **priority**: medium
-- **labels**: enhancement, go, template
-- **milestone**: Progetto generato
-- **ref**: [audit-2026-08-11.md](audit-2026-08-11.md)
-
-`scaffold init` produce 11 file e **zero** `_test.go`. Il `Makefile` generato ha un target `test` che
-esegue `go test ./...` su un progetto senza test: passa sempre, quindi non dice niente. Uno scaffold
-insegna le convenzioni del progetto che genera: senza un test di esempio insegna che i test sono
-opzionali.
-
-Da fare:
-
-- [ ] `template/cmd/main_test.tmpl` con uno smoke test dell'endpoint `/health` via
-      `app.Test(httptest.NewRequest(...))` (Fiber lo supporta nativamente, non serve una porta);
-- [ ] `template/env/env_test.tmpl` sui default della `Configuration` (`envDefault` è facile da
-      rompere e nessuno se ne accorge);
-- [ ] aggiornare l'asserzione esatta di `TestEmbeddedAssetsProduceTheDocumentedLayout` in
-      `main_test.go` e l'albero in `README.md` + `docs/index.md`;
-- [ ] estendere il job `generated-project-builds` con un `go test ./...` sul generato.
-
 ### `config-yml-double-source` — `config/config.yml` non è letto: doppia fonte di configurazione
 
 - **status**: open
@@ -223,6 +156,30 @@ Opzioni, da decidere:
 
 Oggi il file esiste con commenti che dichiarano che i valori veri stanno nell'ambiente: è una
 soluzione tampone, non una decisione.
+
+### `release-drop-thirdparty-action` — release.yml: valutare se togliere del tutto la action di terze parti
+
+- **status**: open
+- **priority**: low
+- **labels**: github_actions, enhancement
+- **milestone**: Hardening CI/CD
+- **ref**: [audit-2026-08-11.md](audit-2026-08-11.md)
+
+`release-yml-pin-and-labels` ha pinnato `Allan-Nava/go-release.action` al SHA: il rischio è ridotto,
+non eliminato. Tutta la pubblicazione dei binari dipende ancora da una action esterna che gira in un
+container, riceve `GITHUB_TOKEN` con `contents: write` e ha una logica non ovvia (usa il `build.sh`
+del repo chiamante e ne interpreta lo stdout — vedi la nota di quell'item).
+
+`go-release.yml` fa già la stessa cosa in modo nativo: `build.sh` + `softprops/action-gh-release`.
+Quindi oggi esistono **due** percorsi di release che pubblicano lo stesso artefatto in modi diversi.
+
+Da decidere:
+
+1. **togliere la action**: matrice `goos/goarch` nativa (`sh build.sh` + `softprops/action-gh-release`),
+   un solo percorso di release, zero dipendenze di terze parti nello step che ha il token;
+2. **tenerla** e allora dismettere `go-release.yml`, per non avere due percorsi che si sovrappongono.
+
+In entrambi i casi va scelto **uno** dei due workflow: la duplicazione attuale è il problema vero.
 
 ## Storico (item chiusi)
 
@@ -311,3 +268,104 @@ Il debito **non** risolto in questo passaggio è tracciato negli item aperti di 
 - [x] Idempotenza: secondo `scaffold init` = 0 creati / 11 skippati; `--force` = 11 riscritti
 - [x] `docker build` = 12,2 MB, `scaffold version` stampa la versione; `docker run -v $PWD:/work` genera nel bind mount
 - [x] Module path dedotto dalla dir: `~/code/github.com/acme/myservice` → `module github.com/acme/myservice` (eliminato il placeholder `module TODO/<nome>`, non risolvibile da `go get`)
+
+### `golangci-lint` — Nessun linter oltre gofmt + go vet
+
+- **status**: done
+- **priority**: medium
+- **labels**: enhancement, go, github_actions
+- **milestone**: Hardening CI/CD
+- **ref**: [audit-2026-08-11.md](audit-2026-08-11.md)
+
+> **CHIUSO**: `.golangci.yml` (v2) con `errcheck`, `nilerr`, `bodyclose`, `revive`, `misspell`,
+> `unconvert`, `wastedassign`, `copyloopvar` oltre ai default. Ha trovato subito **7** valori di
+> ritorno ignorati in `scaffold/scaffold.go` (4 `Close`/`Remove` su percorsi di errore, 3
+> `Fprintf` di progress): nessun bug, ma un `f.Close()` nudo si legge come una dimenticanza, ora
+> sono `_ = ...` con il perche accanto. `check-blank` resta OFF di proposito, cosi `_ =` e la
+> forma ammessa per "ignorato consapevolmente" invece di un `//nolint` che dice meno.
+> Gate in `make lint` + job `golangci-lint` in `go.yml` (action pinnata a `v2.12.2`). `0 issues`.
+
+La CI esegue `gofmt -l` e `go vet ./...`, che non coprono la classe di errori più frequente in questo
+repo: valori di ritorno ignorati. Il bug storico più costoso dell'audit era esattamente questo — il
+valore di ritorno di `filepath.Walk` scartato in `getTemplateSets()`, che nascondeva ogni errore di
+I/O sui template. `errcheck` lo avrebbe segnalato.
+
+Da fare:
+
+- [ ] aggiungere `.golangci.yml` con almeno `errcheck`, `ineffassign`, `misspell`, `revive`;
+- [ ] job `golangci-lint` in `go.yml` (action `golangci/golangci-lint-action`, pinnata);
+- [ ] target `make lint` per avere lo stesso gate in locale;
+- [ ] valutare se estenderlo anche al **progetto generato** (un linter sui template renderebbe
+      esplicite le convenzioni che il template insegna a chi lo usa).
+
+### `generated-project-has-no-tests` — Il progetto generato non contiene nessun test
+
+- **status**: done
+- **priority**: medium
+- **labels**: enhancement, go, template
+- **milestone**: Progetto generato
+- **ref**: [audit-2026-08-11.md](audit-2026-08-11.md)
+
+> **CHIUSO**: il generato passa da 11 a **13 file**, con due test veri.
+> `cmd/main_test.go` guida il router via `app.Test(httptest.NewRequest(...))` - nessuna porta da
+> aprire, nessun database: verifica `/health` = 200 e che una rotta inesistente resti 404 (una
+> catch-all aggiunta per sbaglio si vedrebbe subito). Per farlo `main.tmpl` ora estrae
+> `newApp(name) *fiber.App`, separato da `main()`.
+> `env/env_test.go` fissa i tag `envDefault` - quelli che tengono in piedi `make run` senza
+> configurazione - usando `goenv.ParseWithOptions` con un environment esplicito: i test sono
+> **ermetici**, la shell di chi li lancia non puo farli passare o fallire.
+> Non sono vacui: alterando un `envDefault` il test fallisce col messaggio giusto.
+> `make e2e` e il job CI ora eseguono anche `go test ./...` sul generato.
+
+`scaffold init` produce 11 file e **zero** `_test.go`. Il `Makefile` generato ha un target `test` che
+esegue `go test ./...` su un progetto senza test: passa sempre, quindi non dice niente. Uno scaffold
+insegna le convenzioni del progetto che genera: senza un test di esempio insegna che i test sono
+opzionali.
+
+Da fare:
+
+- [ ] `template/cmd/main_test.tmpl` con uno smoke test dell'endpoint `/health` via
+      `app.Test(httptest.NewRequest(...))` (Fiber lo supporta nativamente, non serve una porta);
+- [ ] `template/env/env_test.tmpl` sui default della `Configuration` (`envDefault` è facile da
+      rompere e nessuno se ne accorge);
+- [ ] aggiornare l'asserzione esatta di `TestEmbeddedAssetsProduceTheDocumentedLayout` in
+      `main_test.go` e l'albero in `README.md` + `docs/index.md`;
+- [ ] estendere il job `generated-project-builds` con un `go test ./...` sul generato.
+
+### `release-yml-pin-and-labels` — `release.yml`: action di terze parti non pinnata a SHA, job etichettati male
+
+- **status**: done
+- **priority**: medium
+- **labels**: github_actions, documentation
+- **milestone**: Hardening CI/CD
+- **ref**: [audit-2026-08-11.md](audit-2026-08-11.md)
+
+> **CHIUSO**, e il finding era piu profondo di come l'avevo scritto. Leggendo il codice della
+> action (`build.sh` di `go-release.action`) e venuto fuori che **se il repo ha un `./build.sh`
+> eseguibile la action usa quello e ne cattura lo stdout come lista di file da archiviare**
+> (`OUTPUT=$(./build.sh "$CMD_PATH")`), ignorando `BUILD_ARGS`; e `PROJECT_NAME` viene comunque
+> sovrascritto con il basename del repo. Il nostro `build.sh` stampava log su stdout, quindi
+> l'archivio di release veniva costruito su nomi di file inesistenti. Ora `build.sh` ha un
+> contratto esplicito: **stdout = solo il path del binario**, tutto il resto su stderr, piu il
+> suffisso `.exe` su windows (mancava: gli artefatti Windows non erano eseguibili).
+> Il workflow: 8 job copiaincollati -> una **matrice**, quindi i nomi non possono piu mentire
+> (erano sbagliati su 3 job, `darwin/amd64` era duplicato e `darwin/arm64` non veniva pubblicato
+> affatto); action pinnata al SHA `ad97966` invece del tag mutabile `v1.5.01`; `permissions:
+> write-all` -> `contents: write` per job; `actions/checkout@master` -> `@v4`; `on: release` ->
+> `types: [published]` (prima ripartiva anche su edited/deleted); rimosso il blocco commentato.
+> Resta aperto `release-drop-thirdparty-action`: pinnare riduce il rischio, non lo elimina.
+
+`.github/workflows/release.yml` usa `Allan-Nava/go-release.action@v1.5.01` su **tutti** i job di
+release, con `permissions: write-all`. Una action di terze parti riferita per tag mutabile e con
+permessi totali sul token è la superficie di attacco tipica della supply chain CI: chi controlla quel
+tag può riscrivere gli asset di release.
+
+Da fare:
+
+- [ ] pinnare la action al **SHA** del commit (`@<sha40>`), non al tag;
+- [ ] restringere `permissions` al minimo per job (`contents: write` sui job che pubblicano);
+- [ ] correggere le label dei job: `release-macos-amd64` si chiama `release macos/32` ma builda amd64;
+- [ ] rimuovere i blocchi commentati (macos/386) o riattivarli, non lasciarli a metà.
+
+Non toccato nell'audit del 2026-08-11: il workflow non è eseguibile in locale, e modificarlo alla
+cieca rischia di rompere la pubblicazione dei binari.

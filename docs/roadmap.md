@@ -10,7 +10,7 @@ description: "Milestone del backlog — pagina generata da docs/backlog.md"
 <!-- GENERATO da docs/scripts/generate-roadmap.py — NON editare a mano. -->
 > Pagina **generata** da [`docs/scripts/generate-roadmap.py`](scripts/generate-roadmap.py) leggendo [`docs/backlog.md`](backlog.md) (unica sorgente). Le milestone sono quelle dichiarate dagli item: non c'è un elenco fisso. Affianca la [board issue di GitHub](https://github.com/Allan-Nava/Go-DDD-Scaffold/milestones).
 
-_4 milestone · 7 item pianificati (6 open · 1 done)._
+_4 milestone · 8 item pianificati (4 open · 4 done)._
 
 ## Audit 2026-08-11
 
@@ -31,21 +31,22 @@ _2 open · 0 done_
 
 ## Hardening CI/CD
 
-_2 open · 0 done_
+_1 open · 2 done_
 
 | id | Titolo | Priorità | Status |
 |----|--------|----------|--------|
-| `golangci-lint` | Nessun linter oltre gofmt + go vet | medium | open |
-| `release-yml-pin-and-labels` | `release.yml`: action di terze parti non pinnata a SHA, job etichettati male | medium | open |
+| `release-drop-thirdparty-action` | release.yml: valutare se togliere del tutto la action di terze parti | low | open |
+| `golangci-lint` | Nessun linter oltre gofmt + go vet | medium | done |
+| `release-yml-pin-and-labels` | `release.yml`: action di terze parti non pinnata a SHA, job etichettati male | medium | done |
 
 ## Progetto generato
 
-_2 open · 0 done_
+_1 open · 1 done_
 
 | id | Titolo | Priorità | Status |
 |----|--------|----------|--------|
-| `generated-project-has-no-tests` | Il progetto generato non contiene nessun test | medium | open |
 | `config-yml-double-source` | `config/config.yml` non è letto: doppia fonte di configurazione | low | open |
+| `generated-project-has-no-tests` | Il progetto generato non contiene nessun test | medium | done |
 
 ## Non pianificati (senza milestone)
 

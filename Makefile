@@ -18,6 +18,12 @@ check:
 	test -z "$$(gofmt -l .)" || (gofmt -l . && exit 1)
 	go vet ./...
 
+# Stesso gate della CI. Config in .golangci.yml; se manca il binario:
+#   go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+.PHONY: lint
+lint:
+	golangci-lint run ./...
+
 # Generates a project in a throwaway directory and compiles it for real: the
 # only gate that proves the templates still emit buildable Go.
 .PHONY: e2e
@@ -26,7 +32,8 @@ e2e: build
 	dir=$$(mktemp -d)/github.com/acme/myservice; \
 	mkdir -p $$dir; \
 	cd $$dir && $(CURDIR)/bin/scaffold init && \
-	go mod tidy && go build ./... && go vet ./... && test -z "$$(gofmt -l .)"; \
+	go mod tidy && go build ./... && go vet ./... && test -z "$$(gofmt -l .)" && \
+	go test ./...; \
 	echo "e2e OK: $$dir"
 
 .PHONY: docker

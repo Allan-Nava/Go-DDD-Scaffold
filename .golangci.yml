@@ -1,0 +1,44 @@
+# golangci-lint v2. Aggiornare in coppia con il job `lint` di .github/workflows/go.yml
+# e con `make lint`, così il gate locale e quello CI restano lo stesso gate.
+version: "2"
+
+linters:
+  # Oltre ai default di v2 (errcheck, govet, ineffassign, staticcheck, unused).
+  # errcheck è il motivo per cui questo file esiste: il bug più costoso dell'audit
+  # 2026-08-11 era il valore di ritorno di filepath.Walk scartato in getTemplateSets(),
+  # che nascondeva ogni errore di I/O sui template.
+  enable:
+    - bodyclose      # response body non chiusi
+    - copyloopvar    # copie inutili della variabile di loop (Go 1.22+)
+    - misspell
+    - nilerr         # `return nil` dopo aver ricevuto un err non nil
+    - revive
+    - unconvert      # conversioni di tipo superflue
+    - wastedassign
+
+  settings:
+    errcheck:
+      check-type-assertions: true
+      # check-blank resta OFF di proposito: `_ = f.Close()` è il modo leggibile di
+      # dichiarare "errore ignorato consapevolmente", e va accompagnato dal perché.
+      # Con check-blank ON l'unica via sarebbe `//nolint`, che dice meno.
+      check-blank: false
+    revive:
+      rules:
+        - name: exported          # i simboli esportati vogliono un commento
+        - name: error-strings     # errori in minuscolo, senza punteggiatura finale
+        - name: indent-error-flow
+        - name: unexported-return
+        - name: var-naming
+
+  exclusions:
+    # Nei test la verbosità non paga: t.Setenv/t.TempDir già falliscono da soli.
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+          - revive
+
+formatters:
+  enable:
+    - gofmt

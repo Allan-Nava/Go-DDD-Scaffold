@@ -23,13 +23,15 @@ The generated layout:
 ├── README.md
 ├── .dockerignore
 ├── cmd
-│   └── main.go          # HTTP entrypoint: config, middlewares, graceful shutdown
+│   ├── main.go          # HTTP entrypoint: config, middlewares, graceful shutdown
+│   └── main_test.go     # smoke test of /health through app.Test (no port needed)
 ├── config
 │   └── config.yml       # non-secret tunables
 ├── database
 │   └── db.go            # GORM connection pool
 └── env
     ├── env.go           # configuration from the environment
+    ├── env_test.go      # pins the envDefault tags
     └── .env.local       # local values
 ```
 

@@ -150,7 +150,9 @@ func (s *Scaffold) copyStatic(w *writer) error {
 			if err != nil {
 				return err
 			}
-			defer src.Close() // per-file closure, so this runs per file
+			// Per-file closure, so this runs per file. Closing a read-only handle
+			// has nothing actionable to report.
+			defer func() { _ = src.Close() }()
 
 			_, err = io.Copy(out, src)
 			return err
@@ -160,7 +162,7 @@ func (s *Scaffold) copyStatic(w *writer) error {
 
 func (s *Scaffold) debugf(format string, a ...any) {
 	if s.opts.Debug {
-		fmt.Fprintf(s.opts.Log, format, a...)
+		_, _ = fmt.Fprintf(s.opts.Log, format, a...)
 	}
 }
 
@@ -196,7 +198,7 @@ func (w *writer) write(rel string, fn func(io.Writer) error) error {
 	if err != nil {
 		if !w.force && errors.Is(err, fs.ErrExist) {
 			w.result.Skipped = append(w.result.Skipped, rel)
-			fmt.Fprintf(w.log, "Skip   %s (already exists, use --force to overwrite)\n", rel)
+			_, _ = fmt.Fprintf(w.log, "Skip   %s (already exists, use --force to overwrite)\n", rel)
 			return nil
 		}
 		return err
@@ -204,12 +206,14 @@ func (w *writer) write(rel string, fn func(io.Writer) error) error {
 
 	buf := bufio.NewWriter(f)
 	if err := fn(buf); err != nil {
-		f.Close()
-		os.Remove(abs) // never leave a half-written source file behind
+		// The write error is what we report; closing and removing are best-effort
+		// cleanup so a half-written source file never survives.
+		_ = f.Close()
+		_ = os.Remove(abs)
 		return fmt.Errorf("write %s: %w", rel, err)
 	}
 	if err := buf.Flush(); err != nil {
-		f.Close()
+		_ = f.Close()
 		return fmt.Errorf("flush %s: %w", rel, err)
 	}
 	if err := f.Close(); err != nil {
@@ -217,7 +221,7 @@ func (w *writer) write(rel string, fn func(io.Writer) error) error {
 	}
 
 	w.result.Created = append(w.result.Created, rel)
-	fmt.Fprintf(w.log, "Create %s\n", rel)
+	_, _ = fmt.Fprintf(w.log, "Create %s\n", rel)
 	return nil
 }
 

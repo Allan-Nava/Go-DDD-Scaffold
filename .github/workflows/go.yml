@@ -30,6 +30,21 @@ jobs:
       - name: generated-pages-check
         run: python3 docs/scripts/generate-roadmap.py --check
 
+  lint:
+    # gofmt + go vet non coprono i valori di ritorno ignorati: il bug più costoso
+    # dell'audit 2026-08-11 era un errore di filepath.Walk scartato in silenzio.
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+          cache: true
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: v2.12.2
+
   build:
     name: build & test
     runs-on: ubuntu-latest
@@ -90,6 +105,10 @@ jobs:
           go build ./...
           go vet ./...
           test -z "$(gofmt -l .)"
+
+      - name: Run the generated project's own tests
+        working-directory: /tmp/gen/github.com/acme/myservice
+        run: go test ./...
 
       - name: Smoke test the health endpoint
         working-directory: /tmp/gen/github.com/acme/myservice

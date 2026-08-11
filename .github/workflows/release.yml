@@ -1,165 +1,53 @@
-# .github/workflows/release.yaml
-on: release
-#
 name: Build Release
-jobs:
-  #
-  # 64-bit
-  #$ GOOS=darwin GOARCH=amd64 go build -o bin/app-amd64-darwin app.go
-  #
-  ## 32-bit
-  #$ GOOS=darwin GOARCH=386 go build -o bin/app-386-darwin app.go
-  #release-macos-386:
-  #  name: release macos/32
-  #  permissions: write-all
-  #  runs-on: ubuntu-latest
-  #  steps:
-  #    - uses: actions/checkout@master
-  #    - name: compile and release
-  #      uses: Allan-Nava/go-release.action@v1.5.01
-  #      env:
-  #        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #        GOARCH: "386"
-  #        GOOS: darwin
-  #        EXTRA_FILES: "LICENSE"
-  #        CMD_PATH: "main.go"
-  #        BUILD_ARGS: "-o scaffold-cli"
-  #        PROJECT_NAME: "scaffold-cli"
-  ##
-  release-macos-amd64:
-    name: release macos/32
-    permissions: write-all
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - name: compile and release
-        uses: Allan-Nava/go-release.action@v1.5.01
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GOARCH: "amd64"
-          GOOS: darwin
-          EXTRA_FILES: "LICENSE"
-          CMD_PATH: "main.go"
-          BUILD_ARGS: "-o scaffold-cli"
-          PROJECT_NAME: "scaffold-cli"
-  #
-  release-linux-386:
-    name: release linux/386
-    permissions: write-all
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - name: compile and release
-        uses: Allan-Nava/go-release.action@v1.5.01
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GOARCH: "386"
-          GOOS: linux
-          EXTRA_FILES: "LICENSE"
-          CMD_PATH: "main.go"
-          BUILD_ARGS: "-o scaffold-cli"
-          PROJECT_NAME: "scaffold-cli"
-  #
-  release-linux-amd64:
-    name: release linux/amd64
-    permissions: write-all
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - name: compile and release
-        uses: Allan-Nava/go-release.action@v1.5.01
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GOARCH: amd64
-          GOOS: linux
-          EXTRA_FILES: "LICENSE"
-          CMD_PATH: "main.go"
-          BUILD_ARGS: "-o scaffold-cli"
-          PROJECT_NAME: "scaffold-cli"
-  #
-  release-linux-arm:
-    name: release linux/386
-    permissions: write-all
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - name: compile and release
-        uses: Allan-Nava/go-release.action@v1.5.01
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GOARCH: "arm"
-          GOOS: linux
-          EXTRA_FILES: "LICENSE"
-          CMD_PATH: "main.go"
-          BUILD_ARGS: "-o scaffold-cli"
-          PROJECT_NAME: "scaffold-cli"
-  #
-  release-linux-arm64:
-    name: release linux/amd64
-    permissions: write-all
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - name: compile and release
-        uses: Allan-Nava/go-release.action@v1.5.01
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GOARCH: arm64
-          GOOS: linux
-          EXTRA_FILES: "LICENSE"
-          CMD_PATH: "main.go"
-          BUILD_ARGS: "-o scaffold-cli"
-          PROJECT_NAME: "scaffold-cli"
-  #
-  release-darwin-amd64:
-    name: release darwin/amd64
-    permissions: write-all
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - name: compile and release
-        uses: Allan-Nava/go-release.action@v1.5.01
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GOARCH: amd64
-          GOOS: darwin
-          EXTRA_FILES: "LICENSE"
-          CMD_PATH: "main.go"
-          BUILD_ARGS: "-o scaffold-cli"
-          PROJECT_NAME: "scaffold-cli"
-  #
-  release-windows-386:
-    name: release windows/386
-    permissions: write-all
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - name: compile and release
-        uses: Allan-Nava/go-release.action@v1.5.01
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GOARCH: "386"
-          GOOS: windows
-          EXTRA_FILES: "LICENSE"
-          CMD_PATH: "main.go"
-          BUILD_ARGS: "-o scaffold"
-          PROJECT_NAME: "Go-DDD-Scaffold"
-  #
-  release-windows-amd64:
-    name: release windows/amd64
-    permissions: write-all
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - name: compile and release
-        uses: Allan-Nava/go-release.action@v1.5.01
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GOARCH: amd64
-          GOOS: windows
-          EXTRA_FILES: "LICENSE"
-          CMD_PATH: "main.go"
-          BUILD_ARGS: "-o scaffold"
-          PROJECT_NAME: "Go-DDD-Scaffold"
-    #
 #
+on:
+  release:
+    # Solo `published`: con il bare `on: release` il workflow riparte anche su
+    # edited/unpublished/deleted, ripubblicando gli stessi asset.
+    types: [published]
+#
+permissions:
+  contents: read
+#
+jobs:
+  release:
+    # Una matrice invece di 8 job copiaincollati: i nomi dei job derivano dalla
+    # coppia goos/goarch, quindi non possono più mentire (c'erano tre etichette
+    # sbagliate — "macos/32" per darwin/amd64, "linux/386" per arm, "linux/amd64"
+    # per arm64 — e darwin/amd64 era duplicato in due job, mentre darwin/arm64
+    # non veniva pubblicato affatto).
+    name: release ${{ matrix.goos }}/${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    permissions:
+      # Il minimo per caricare gli asset sulla release: era `write-all` su ognuno
+      # degli 8 job, con una action di terze parti nello stesso step.
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goos: linux, goarch: "386" }
+          - { goos: linux, goarch: amd64 }
+          - { goos: linux, goarch: arm }
+          - { goos: linux, goarch: arm64 }
+          - { goos: darwin, goarch: amd64 }
+          - { goos: darwin, goarch: arm64 }
+          - { goos: windows, goarch: "386" }
+          - { goos: windows, goarch: amd64 }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: compile and release
+        # Pinnata al SHA, non al tag: `@v1.5.01` è mutabile e chi controlla il
+        # tag potrebbe riscrivere gli asset di release di questo repo.
+        uses: Allan-Nava/go-release.action@ad979660e82cf6cd6cf4050bbec45fd4a26d6d25 # v1.5.01
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          EXTRA_FILES: "LICENSE"
+          CMD_PATH: "main.go"
+          # BUILD_ARGS e PROJECT_NAME sono deliberatamente assenti: l'action li
+          # ignora quando il repo ha un ./build.sh eseguibile (prende il nostro,
+          # e sovrascrive PROJECT_NAME con il basename del repo). I flag di build
+          # -trimpath/-ldflags e il nome dell'output vivono in build.sh.

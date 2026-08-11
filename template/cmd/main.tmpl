@@ -19,17 +19,11 @@ import (
 
 const shutdownTimeout = 10 * time.Second
 
-func main() {
-	log := zap.Must(zap.NewProduction()).Sugar()
-	defer log.Sync() //nolint:errcheck // nothing useful to do on a failed flush
-
-	cfg, err := env.GetEnvConfig(log)
-	if err != nil {
-		log.Fatalw("cannot load the configuration", "err", err)
-	}
-
+// newApp builds the router and its middlewares. It is separate from main so the
+// tests can drive it through app.Test, with no port to bind and no database.
+func newApp(name string) *fiber.App {
 	app := fiber.New(fiber.Config{
-		AppName:               "{{.ProjectName}}",
+		AppName:               name,
 		DisableStartupMessage: true,
 		ReadTimeout:           15 * time.Second,
 		WriteTimeout:          15 * time.Second,
@@ -43,6 +37,24 @@ func main() {
 		AllowMethods: "GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE",
 	}))
 
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	return app
+}
+
+func main() {
+	log := zap.Must(zap.NewProduction()).Sugar()
+	defer log.Sync() //nolint:errcheck // nothing useful to do on a failed flush
+
+	cfg, err := env.GetEnvConfig(log)
+	if err != nil {
+		log.Fatalw("cannot load the configuration", "err", err)
+	}
+
+	app := newApp("{{.ProjectName}}")
+
 	// The database is optional, so a freshly generated project runs without one.
 	if cfg.DBHost != "" {
 		db, err := database.InitDB(log, cfg)
@@ -53,10 +65,6 @@ func main() {
 	} else {
 		log.Warn("DB_HOST is empty: starting without a database")
 	}
-
-	app.Get("/health", func(c *fiber.Ctx) error {
-		return c.SendStatus(fiber.StatusOK)
-	})
 
 	go func() {
 		log.Infow("listening", "addr", cfg.HTTPAddr)

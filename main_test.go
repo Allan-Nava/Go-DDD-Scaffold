@@ -49,11 +49,13 @@ func TestEmbeddedAssetsProduceTheDocumentedLayout(t *testing.T) {
 		"Makefile",
 		"README.md",
 		"cmd/main.go",
+		"cmd/main_test.go",
 		"config/config.yml",
 		"database/db.go",
 		"docker-compose.yml",
 		"env/.env.local",
 		"env/env.go",
+		"env/env_test.go",
 		"go.mod",
 	}, res.Created)
 }
