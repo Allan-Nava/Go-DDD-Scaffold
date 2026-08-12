@@ -11,7 +11,8 @@
     "url": "https://github.com/Allan-Nava/Go-DDD-Scaffold/issues"
   },
   "homepage": "https://github.com/Allan-Nava/Go-DDD-Scaffold/tree/main/extensions/vscode",
-  "version": "0.0.1",
+  "publisher": "allannava95",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -25,7 +26,7 @@
     "domain driven design",
     "pattern"
   ],
-  "main": "./dist/extension",
+  "main": "./dist/extension.js",
   "contributes": {
     "configuration": {
       "title": "Go Domain Driven Design Scaffold",

@@ -61,10 +61,26 @@ curl localhost:8080/health      # 200
 Every run appends the CLI's per-file output to the **Go DDD Scaffold** output
 channel, so a generation can be inspected after the notification is gone.
 
+## Releasing
+
+The extension has its own tag namespace, separate from the repository's `vX.Y.Z`
+tags (which exist on every commit and only publish the Docker image):
+
+```sh
+# 1. bump "version" in package.json, commit
+# 2. tag with the SAME version, prefixed
+git tag -a vscode-v0.1.0 -m "..." && git push --tags
+```
+
+`vscode-publish.yml` verifies the tag matches `package.json` and fails loudly if
+they diverge, then lints, tests, packages and publishes. The publish steps are
+skipped — not failed — when the `VSCE_PAT` / `OVSX_PAT` secrets are absent.
+
 ## Known limitations
 
-- The `publisher` and `version` fields of this extension are not yet aligned with
-  the repository's release tags. See the repository backlog.
+- Publishing needs the `VSCE_PAT` repository secret (and `OVSX_PAT` for Open VSX);
+  without them the workflow packages the `.vsix` as a build artifact and skips the
+  upload. See the repository backlog.
 - There are no integration tests running in a real editor host: the tested part
   is the CLI wrapper (binary discovery, argv, output parsing), which is where the
   logic lives.

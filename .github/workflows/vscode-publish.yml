@@ -1,20 +1,36 @@
 name: 'Vscode Extension Publish'
+#
 on:
   push:
+    # Namespace di tag dedicato all'estensione, NON `v*`. In questo repo ogni
+    # commit porta un tag `vX.Y.Z` (vedi CLAUDE.md): pubblicare su quelli
+    # significherebbe una nuova versione sui marketplace a ogni commit, anche
+    # quando l'estensione non e stata toccata. Le versioni pubblicate sono
+    # immutabili e notificano gli utenti, quindi la pubblicazione e esplicita.
     tags:
-      - "v*"
+      - "vscode-v*"
+  # Ripubblicazione manuale senza dover creare un tag.
+  workflow_dispatch:
 #
 permissions:
   contents: read
 #
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+#
+defaults:
+  run:
+    # Un `run: cd extensions/vscode` sarebbe un no-op: ogni step apre una shell
+    # nuova. Il path va dichiarato qui.
+    working-directory: extensions/vscode
+#
 jobs:
-  deploy:
+  verify:
+    # Non si pubblica cio che non passa i gate: su un tag `go.yml` non gira
+    # (reagisce solo a push su main e alle PR), quindi il controllo va rifatto qui.
+    name: verify
     runs-on: ubuntu-latest
-    # A bare `run: cd extensions/vscode` does nothing: every run step starts a
-    # new shell, so the path has to be set per step instead.
-    defaults:
-      run:
-        working-directory: extensions/vscode
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,18 +39,90 @@ jobs:
           cache: npm
           cache-dependency-path: extensions/vscode/package-lock.json
       - run: npm ci
-      - run: npm run compile
+      - run: npm run lint
+      - run: npm test
 
-      - name: Publish to Open VSX Registry
-        uses: HaaLeo/publish-vscode-extension@v1
+  package:
+    name: package
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          pat: ${{ secrets.OPEN_VSX_TOKEN }}
-          packagePath: extensions/vscode
+          node-version: 22
+          cache: npm
+          cache-dependency-path: extensions/vscode/package-lock.json
+      - run: npm ci
 
-      - name: Publish to Visual Studio Marketplace
-        uses: HaaLeo/publish-vscode-extension@v1
+      - name: Il tag deve combaciare con la version del package.json
+        # Solo per i tag: con workflow_dispatch si pubblica quello che c'e.
+        if: startsWith(github.ref, 'refs/tags/vscode-v')
+        run: |
+          TAG="${GITHUB_REF_NAME#vscode-v}"
+          PKG="$(node -p "require('./package.json').version")"
+          echo "tag=$TAG package.json=$PKG"
+          test "$TAG" = "$PKG" || {
+            echo "::error::il tag vscode-v$TAG non combacia con package.json ($PKG)"
+            exit 1
+          }
+
+      # --no-dependencies: l'estensione non ha dipendenze runtime, quindi vsce
+      # non deve ne risolverle ne includerle.
+      - name: Package .vsix
+        run: npx --yes @vscode/vsce@3 package --no-dependencies --out extension.vsix
+
+      # Artifact e non GitHub Release di proposito: creare una release farebbe
+      # scattare `release.yml` e `go-release.yml` (che reagiscono a
+      # `release: published`), i quali pubblicherebbero i binari della CLI Go
+      # dentro una release dell'estensione.
+      - name: Upload .vsix
+        uses: actions/upload-artifact@v4
         with:
-          pat: ${{ secrets.VS_MARKETPLACE_TOKEN }}
-          registryUrl: https://marketplace.visualstudio.com
-          packagePath: extensions/vscode
+          name: go-ddd-scaffold-vsix
+          path: extensions/vscode/extension.vsix
+          if-no-files-found: error
+
+  publish:
+    name: publish
+    needs: package
+    runs-on: ubuntu-latest
+    env:
+      # Letti qui cosi gli `if` degli step possono verificarne la presenza:
+      # senza il secret lo step viene saltato invece di fallire, altrimenti ogni
+      # tag lascerebbe un job rosso su un repo che non ha ancora i token.
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: extensions/vscode/package-lock.json
+      - run: npm ci
+
+      - name: Publish to VS Code Marketplace
+        if: ${{ env.VSCE_PAT != '' }}
+        run: npx --yes @vscode/vsce@3 publish --no-dependencies
+
+      - name: Publish to Open VSX
+        if: ${{ env.OVSX_PAT != '' }}
+        run: npx --yes ovsx@1 publish --no-dependencies
+
+      - name: Riepilogo
+        run: |
+          {
+            echo "### Publish estensione VSCode"
+            if [ -n "$VSCE_PAT" ]; then
+              echo "- Visual Studio Marketplace: pubblicata"
+            else
+              echo "- Visual Studio Marketplace: **saltata**, manca il secret \`VSCE_PAT\`"
+            fi
+            if [ -n "$OVSX_PAT" ]; then
+              echo "- Open VSX: pubblicata"
+            else
+              echo "- Open VSX: **saltata**, manca il secret \`OVSX_PAT\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 #

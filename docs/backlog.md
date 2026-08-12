@@ -79,37 +79,6 @@ make backlog-sync-apply       # applica: crea/aggiorna/chiude le issue e le mile
 
 ## Item attivi
 
-### `vscode-extension-publish-metadata` — Estensione VSCode: `publisher: "None"` e versione 0.0.1 → il publish fallisce
-
-- **status**: open
-- **priority**: medium
-- **labels**: bug, vscode, github_actions
-- **milestone**: Estensione VSCode
-- **ref**: [audit-2026-08-11.md](audit-2026-08-11.md)
-
-`extensions/vscode/package.json` ha `"publisher": "None"` e `"version": "0.0.1"` mentre il repo è a
-`v0.7.7`. `vscode-publish.yml` scatta su ogni tag `v*` e pubblica su Open VSX + Visual Studio
-Marketplace: con questi metadati il publish fallisce (publisher inesistente) e, se anche riuscisse,
-pubblicherebbe una versione che non corrisponde al tag.
-
-Da fare:
-
-- [ ] impostare il `publisher` reale (l'ID del publisher su marketplace.visualstudio.com);
-- [ ] allineare `version` al tag, o derivarla dal tag nel workflow (`npm version --no-git-tag-version`);
-- [x] ~~`description` è vuota~~ — compilata nella riscrittura;
-- [ ] valutare se il publish debba essere gated (solo tag che toccano `extensions/`), per non
-      pubblicare l'estensione a ogni release della CLI.
-
-Non è più bloccato da `vscode-extension-rewrite` (chiuso: l'estensione ora funziona). Resta da
-fare perché richiede **il tuo publisher ID** del Marketplace, che non posso indovinare.
-
-Nel frattempo il **packaging è stato sbloccato e verificato**: `vsce package` falliva con *"Couldn't
-detect the repository where this extension is published"* perché `package.json` non aveva
-`repository`, e i link relativi del README non erano risolvibili — il publish su tag si sarebbe
-rotto lì, prima ancora di arrivare al publisher. Aggiunti `repository`, `bugs`, `homepage`,
-`license: MIT` e il file `LICENSE`; rimosso `tslint.json` (deprecato, si usa eslint) che finiva
-dentro il `.vsix`. Ora produce un pacchetto pulito: **7 file, 8,5 KB, zero warning**.
-
 ### `config-yml-double-source` — `config/config.yml` non è letto: doppia fonte di configurazione
 
 - **status**: open
@@ -188,6 +157,35 @@ Da sistemare in `docs/_config.yml`, indipendentemente:
       raccoglie più nulla. Togliere o passare a GA4 (`G-…`);
 - [ ] valutare un `repository: Allan-Nava/Go-DDD-Scaffold` esplicito, così `jekyll-github-metadata`
       non deve dedurre il nwo dal contesto.
+
+### `vscode-marketplace-secret` — Manca il secret VSCE_PAT: il publish si salta invece di pubblicare
+
+- **status**: open
+- **priority**: medium
+- **labels**: github_actions, vscode
+- **milestone**: Estensione VSCode
+- **ref**: [audit-2026-08-11.md](audit-2026-08-11.md)
+
+Il repo **non ha nessun secret** configurato (`gh secret list` è vuoto): i vecchi
+`OPEN_VSX_TOKEN` / `VS_MARKETPLACE_TOKEN` a cui il workflow si riferiva non sono mai esistiti.
+È la ragione di fondo per cui il publish non poteva funzionare, al di là dei metadati.
+
+Ora `vscode-publish.yml` **salta** gli step di publish quando il token manca, invece di fallire:
+il `.vsix` viene comunque prodotto e caricato come artifact, e il riepilogo del run dice quale
+marketplace è stato saltato e perché. Quindi non c'è nulla di rotto — semplicemente non pubblica.
+
+Da fare (serve un'azione tua, i secret non posso crearli io):
+
+- [ ] aggiungere il secret **`VSCE_PAT`** al repo — Personal Access Token di Azure DevOps per il
+      publisher `allannava95`, scope *Marketplace → Manage*. È lo stesso tipo di token già usato in
+      `nomad-lens`;
+- [ ] opzionale: **`OVSX_PAT`** per Open VSX. Nemmeno `nomad-lens` ce l'ha, quindi oggi nessuna
+      delle due estensioni è su Open VSX: se non interessa, lo step resta saltato e va bene così;
+- [ ] valutare se tenere i token in un **environment** GitHub (`marketplace`) con protection rule,
+      come fa `nomad-lens`, invece che come secret di repo. In quel caso va aggiunto
+      `environment: marketplace` al job `publish`, altrimenti non li vede.
+
+Prima pubblicazione: tag `vscode-v0.1.0` (deve combaciare con `version` in `package.json`).
 
 ## Storico (item chiusi)
 
@@ -435,3 +433,53 @@ La prima elimina per costruzione il drift fra i due set di template.
 In questo passaggio sono stati corretti solo i `.tpl` gemelli (errori di compilazione;
 `database/db.tpl` era un duplicato identico di `config/config.tpl`), per rispettare la regola dei
 gemelli di `CLAUDE.md`.
+
+### `vscode-extension-publish-metadata` — Estensione VSCode: `publisher: "None"` e versione 0.0.1 → il publish fallisce
+
+- **status**: done
+- **priority**: medium
+- **labels**: bug, vscode, github_actions
+- **milestone**: Estensione VSCode
+- **ref**: [audit-2026-08-11.md](audit-2026-08-11.md)
+
+> **CHIUSO**: risolto prendendo spunto da `nomad-lens`, che pubblica gia sul Marketplace.
+> Da li e arrivato anche il dato che dicevo di non poter indovinare: il publisher e
+> **`allannava95`** (verificato: ha `nomad-lens v1.4.0` pubblicata). `go-ddd-scaffold` non
+> risulta pubblicata ne su Marketplace ne su Open VSX, quindi la prima sara una create.
+>
+> Metadati: `publisher: allannava95`, `version: 0.1.0` (la 0.0.1 era di un'estensione che non
+> generava nulla), `main` esplicito. Il `.vsix` dichiara `allannava95.go-ddd-scaffold` 0.1.0 e
+> contiene davvero il file puntato da `main`.
+>
+> Workflow riscritto sul modello nomad-lens: tre job `verify` -> `package` -> `publish`, con
+> **controllo che il tag combaci con `version`**, `vsce`/`ovsx` da CLI al posto della action di
+> terze parti, e step di publish **condizionati alla presenza dei secret** (saltati, non falliti).
+>
+> Due scelte diverse da nomad-lens, per il contesto di questo repo: il trigger e il namespace
+> **`vscode-v*`** e non `v*`, perche qui ogni commit ha un tag e altrimenti si pubblicherebbe una
+> versione sui marketplace a ogni commit; e il `.vsix` va in **artifact** invece che in una GitHub
+> Release, perche creare una release farebbe scattare `release.yml`/`go-release.yml` (che
+> reagiscono a `release: published`) pubblicando i binari Go dentro una release dell'estensione.
+
+`extensions/vscode/package.json` ha `"publisher": "None"` e `"version": "0.0.1"` mentre il repo è a
+`v0.7.7`. `vscode-publish.yml` scatta su ogni tag `v*` e pubblica su Open VSX + Visual Studio
+Marketplace: con questi metadati il publish fallisce (publisher inesistente) e, se anche riuscisse,
+pubblicherebbe una versione che non corrisponde al tag.
+
+Da fare:
+
+- [ ] impostare il `publisher` reale (l'ID del publisher su marketplace.visualstudio.com);
+- [ ] allineare `version` al tag, o derivarla dal tag nel workflow (`npm version --no-git-tag-version`);
+- [x] ~~`description` è vuota~~ — compilata nella riscrittura;
+- [ ] valutare se il publish debba essere gated (solo tag che toccano `extensions/`), per non
+      pubblicare l'estensione a ogni release della CLI.
+
+Non è più bloccato da `vscode-extension-rewrite` (chiuso: l'estensione ora funziona). Resta da
+fare perché richiede **il tuo publisher ID** del Marketplace, che non posso indovinare.
+
+Nel frattempo il **packaging è stato sbloccato e verificato**: `vsce package` falliva con *"Couldn't
+detect the repository where this extension is published"* perché `package.json` non aveva
+`repository`, e i link relativi del README non erano risolvibili — il publish su tag si sarebbe
+rotto lì, prima ancora di arrivare al publisher. Aggiunti `repository`, `bugs`, `homepage`,
+`license: MIT` e il file `LICENSE`; rimosso `tslint.json` (deprecato, si usa eslint) che finiva
+dentro il `.vsix`. Ora produce un pacchetto pulito: **7 file, 8,5 KB, zero warning**.
