@@ -25,6 +25,12 @@ module (`Go-DDD-Scaffold`), so both that name and `scaffold` are recognised.
 If it is not found, the extension offers to run the `go install` above in a
 terminal.
 
+A CLI left over from before the extension was rewritten is **rejected** rather
+than used: that build ignores the folder you pick and writes next to its own
+executable. Its version number cannot be trusted for this (it was hardcoded to
+`v1.0.1`), so the check probes for the `init --force` flag. If you see "the
+scaffold CLI found on this machine is too old", run the `go install` again.
+
 ## Usage
 
 - **Command palette**: `Go DDD: New Scaffold Project`

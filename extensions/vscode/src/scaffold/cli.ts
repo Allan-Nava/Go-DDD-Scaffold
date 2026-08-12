@@ -22,8 +22,18 @@ export const BINARY_NAMES = ["scaffold", "Go-DDD-Scaffold"] as const;
  * program that happens to be called "scaffold" on the user's PATH. */
 export const VERSION_PREFIX = "scaffold version";
 
-/** How long a candidate binary gets to answer `--version`. */
+/** How long a candidate binary gets to answer a probe. */
 const PROBE_TIMEOUT_MS = 5_000;
+
+/**
+ * A flag that only the rewritten CLI has. It is used as a capability probe
+ * because the version number cannot be trusted: the pre-rewrite binary hardcoded
+ * `v1.0.1`, which is *higher* than the versions that fixed it, so a minimum
+ * version check would wave it through. That old CLI ignores the directory it is
+ * given and writes next to its own executable, so running it would silently
+ * generate nothing where the user asked.
+ */
+const REQUIRED_FLAG = "--force";
 
 /** How long a generation gets. Writing ~13 small files is milliseconds; this is
  * only here so a wedged process cannot hang the extension host forever. */
@@ -43,6 +53,17 @@ export class BinaryNotFoundError extends Error {
 			"the scaffold CLI was not found. Tried: " + triedCandidates.join(", "),
 		);
 		this.name = "BinaryNotFoundError";
+	}
+}
+
+/** Raised when a CLI was found but predates the rewrite. */
+export class OutdatedBinaryError extends Error {
+	constructor(readonly command: string, readonly version: string) {
+		super(
+			`the scaffold CLI at ${command} (${version}) is too old: it ignores the ` +
+				"target directory and writes next to its own executable",
+		);
+		this.name = "OutdatedBinaryError";
 	}
 }
 
@@ -100,6 +121,14 @@ export function binaryCandidates(
 		}
 	}
 	return [...new Set(candidates)];
+}
+
+/**
+ * supportsModernInit reports whether `init --help` output comes from a CLI that
+ * honours the target directory. See REQUIRED_FLAG.
+ */
+export function supportsModernInit(initHelpOutput: string): boolean {
+	return initHelpOutput.includes(REQUIRED_FLAG);
 }
 
 /** isOurCli reports whether `--version` output came from this project's CLI. */
@@ -189,6 +218,8 @@ export async function locateBinary(
 ): Promise<{ command: string; version: string }> {
 	const candidates = binaryCandidates(configuredPath, env, homedir);
 
+	let outdated: { command: string; version: string } | undefined;
+
 	for (const command of candidates) {
 		let output: string;
 		try {
@@ -196,9 +227,27 @@ export async function locateBinary(
 		} catch {
 			continue; // not present, not executable, or it timed out
 		}
-		if (isOurCli(output)) {
-			return { command, version: parseVersion(output) };
+		if (!isOurCli(output)) {
+			continue; // a different program that happens to share the name
 		}
+
+		const version = parseVersion(output);
+		let help: string;
+		try {
+			help = await exec(command, ["init", "--help"], PROBE_TIMEOUT_MS);
+		} catch {
+			help = ""; // an old CLI may exit non-zero on an unknown flag
+		}
+		if (!supportsModernInit(help)) {
+			// Keep looking: a usable one may sit further down the candidate list.
+			outdated = outdated ?? { command, version };
+			continue;
+		}
+		return { command, version };
+	}
+
+	if (outdated) {
+		throw new OutdatedBinaryError(outdated.command, outdated.version);
 	}
 	throw new BinaryNotFoundError(candidates);
 }

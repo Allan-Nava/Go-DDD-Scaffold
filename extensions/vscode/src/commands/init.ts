@@ -6,6 +6,7 @@ import {
 	BinaryNotFoundError,
 	GenerationError,
 	GenerationResult,
+	OutdatedBinaryError,
 	locateBinary,
 	runInit,
 } from "../scaffold/cli";
@@ -193,6 +194,32 @@ async function reportFailure(
 				"workbench.action.openSettings",
 				`${CONFIG_SECTION}.binaryPath`,
 			);
+		}
+		return;
+	}
+
+	if (err instanceof OutdatedBinaryError) {
+		output.appendLine(err.message);
+
+		const update = "Update with go";
+		const picked = await vscode.window.showErrorMessage(
+			"The scaffold CLI found on this machine is too old.",
+			{
+				modal: true,
+				detail:
+					`Found ${err.command} reporting version ${err.version}.\n\n` +
+					"That build ignores the folder you pick and writes next to its own " +
+					"executable, so nothing would appear where you asked. Its version " +
+					"number is not usable to detect this — it was hardcoded — so the " +
+					"extension checks for the `--force` flag instead.\n\n" +
+					`Update it with:\n  ${INSTALL_COMMAND}`,
+			},
+			update,
+		);
+		if (picked === update) {
+			const terminal = vscode.window.createTerminal("Update scaffold CLI");
+			terminal.show();
+			terminal.sendText(INSTALL_COMMAND);
 		}
 		return;
 	}

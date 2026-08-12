@@ -23,6 +23,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ### Added
 
+- A guard against a **pre-rewrite CLI**. Verified in a real editor host: a
+  `go install` from before the rewrite leaves a binary that ignores the folder you
+  pick and writes next to its own executable, so the command appeared to do
+  nothing. Its version cannot be used to detect this — that build hardcoded
+  `v1.0.1`, *higher* than the versions that fixed it — so the extension probes for
+  the `init --force` flag instead and, when it is missing, says so and offers to
+  update the CLI.
 - `goDddScaffold.binaryPath` setting, and automatic discovery of the CLI on the
   `PATH` and in `$GOBIN` / `$GOPATH/bin` / `~/go/bin` (a GUI editor does not read
   the shell profile). Both `scaffold` and the `go install` name

@@ -8,11 +8,13 @@ import {
 	BinaryNotFoundError,
 	Exec,
 	GenerationError,
+	OutdatedBinaryError,
 	binaryCandidates,
 	buildInitArgs,
 	goBinDirs,
 	isOurCli,
 	locateBinary,
+	supportsModernInit,
 	parseGenerationOutput,
 	parseVersion,
 	runInit,
@@ -114,9 +116,54 @@ test("parseVersion extracts the version, or reports it as unknown", () => {
 	assert.equal(parseVersion("scaffold version\n"), "unknown");
 });
 
+// The rewritten CLI is told apart by a capability, not by a version number:
+// the pre-rewrite binary hardcoded "v1.0.1", higher than the versions that fixed
+// it, so a minimum-version check would accept it.
+test("supportsModernInit keys off the --force flag", () => {
+	assert.ok(supportsModernInit("OPTIONS:\n   --force, -f  overwrite files\n"));
+	assert.ok(!supportsModernInit("OPTIONS:\n   --help, -h  show help\n"));
+	assert.ok(!supportsModernInit(""));
+});
+
+test("locateBinary rejects a pre-rewrite CLI even though its version looks newer", async () => {
+	const exec: Exec = async (_file, args) => {
+		if (args[0] === "--version") {
+			return "scaffold version v1.0.1\n";   // hardcoded, and higher than the fix
+		}
+		return "OPTIONS:\n   --help, -h  show help\n"; // no --force: the old init
+	};
+
+	await assert.rejects(
+		() => locateBinary("/old/Go-DDD-Scaffold", exec, NO_ENV, HOME),
+		(err: unknown) => {
+			assert.ok(err instanceof OutdatedBinaryError);
+			assert.equal(err.version, "v1.0.1");
+			assert.match(err.message, /too old/);
+			return true;
+		},
+	);
+});
+
+test("locateBinary prefers a usable CLI over an outdated one earlier in the list", async () => {
+	const exec: Exec = async (file, args) => {
+		if (args[0] === "--version") {
+			return "scaffold version dev\n";
+		}
+		// Only the go/bin copy is the rewritten one.
+		return file.includes("go") ? "OPTIONS:\n   --force\n" : "OPTIONS:\n   --help\n";
+	};
+
+	const found = await locateBinary("", exec, NO_ENV, HOME);
+
+	assert.equal(found.command, path.join(HOME, "go", "bin", "scaffold"));
+});
+
 test("locateBinary skips a same-named program that is not ours", async () => {
 	const probed: string[] = [];
-	const exec: Exec = async (file) => {
+	const exec: Exec = async (file, args) => {
+		if (args[0] !== "--version") {
+			return "OPTIONS:\n   --force\n";
+		}
 		probed.push(file);
 		if (file === "scaffold") {
 			return "Scaffold 4.1.0 (some other generator)\n";
@@ -137,11 +184,11 @@ test("locateBinary skips a same-named program that is not ours", async () => {
 test("locateBinary falls back to ~/go/bin when the PATH does not carry it", async () => {
 	// The usual case on macOS: a GUI editor never read the shell profile.
 	const inGoBin = path.join(HOME, "go", "bin", "scaffold");
-	const exec: Exec = async (file) => {
-		if (file === inGoBin) {
-			return "scaffold version v0.8.0\n";
+	const exec: Exec = async (file, args) => {
+		if (file !== inGoBin) {
+			throw new Error("ENOENT");
 		}
-		throw new Error("ENOENT");
+		return args[0] === "--version" ? "scaffold version v0.8.0\n" : "OPTIONS:\n   --force\n";
 	};
 
 	const found = await locateBinary("", exec, NO_ENV, HOME);
