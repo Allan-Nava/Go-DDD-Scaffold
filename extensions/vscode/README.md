@@ -69,18 +69,21 @@ channel, so a generation can be inspected after the notification is gone.
 
 ## Releasing
 
-The extension has its own tag namespace, separate from the repository's `vX.Y.Z`
-tags (which exist on every commit and only publish the Docker image):
+Bump `version` in `package.json` and commit. The next repository tag publishes it.
 
 ```sh
 # 1. bump "version" in package.json, commit
-# 2. tag with the SAME version, prefixed
-git tag -a vscode-v0.1.0 -m "..." && git push --tags
+# 2. push any tag — the version decides, not the tag
+git push --tags
 ```
 
-`vscode-publish.yml` verifies the tag matches `package.json` and fails loudly if
-they diverge, then lints, tests, packages and publishes. The publish steps are
-skipped — not failed — when the `VSCE_PAT` / `OVSX_PAT` secrets are absent.
+`vscode-publish.yml` asks the public gallery whether that version is already
+online and **only publishes when it is not**, so the repository can carry a tag
+per commit without pushing a new marketplace version every time. Marketplace
+versions are immutable, so this also keeps a re-run from failing.
+
+The publish steps are skipped — not failed — when the `VSCE_PAT` / `OVSX_PAT`
+secrets are absent.
 
 ## Known limitations
 

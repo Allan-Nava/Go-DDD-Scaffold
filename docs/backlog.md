@@ -158,35 +158,6 @@ Da sistemare in `docs/_config.yml`, indipendentemente:
 - [ ] valutare un `repository: Allan-Nava/Go-DDD-Scaffold` esplicito, così `jekyll-github-metadata`
       non deve dedurre il nwo dal contesto.
 
-### `vscode-marketplace-secret` — Manca il secret VSCE_PAT: il publish si salta invece di pubblicare
-
-- **status**: open
-- **priority**: medium
-- **labels**: github_actions, vscode
-- **milestone**: Estensione VSCode
-- **ref**: [audit-2026-08-11.md](audit-2026-08-11.md)
-
-Il repo **non ha nessun secret** configurato (`gh secret list` è vuoto): i vecchi
-`OPEN_VSX_TOKEN` / `VS_MARKETPLACE_TOKEN` a cui il workflow si riferiva non sono mai esistiti.
-È la ragione di fondo per cui il publish non poteva funzionare, al di là dei metadati.
-
-Ora `vscode-publish.yml` **salta** gli step di publish quando il token manca, invece di fallire:
-il `.vsix` viene comunque prodotto e caricato come artifact, e il riepilogo del run dice quale
-marketplace è stato saltato e perché. Quindi non c'è nulla di rotto — semplicemente non pubblica.
-
-Da fare (serve un'azione tua, i secret non posso crearli io):
-
-- [ ] aggiungere il secret **`VSCE_PAT`** al repo — Personal Access Token di Azure DevOps per il
-      publisher `allannava95`, scope *Marketplace → Manage*. È lo stesso tipo di token già usato in
-      `nomad-lens`;
-- [ ] opzionale: **`OVSX_PAT`** per Open VSX. Nemmeno `nomad-lens` ce l'ha, quindi oggi nessuna
-      delle due estensioni è su Open VSX: se non interessa, lo step resta saltato e va bene così;
-- [ ] valutare se tenere i token in un **environment** GitHub (`marketplace`) con protection rule,
-      come fa `nomad-lens`, invece che come secret di repo. In quel caso va aggiunto
-      `environment: marketplace` al job `publish`, altrimenti non li vede.
-
-Prima pubblicazione: tag `vscode-v0.1.0` (deve combaciare con `version` in `package.json`).
-
 ## Storico (item chiusi)
 
 Item con `status: done`: restano qui come traccia del perché, e la issue corrispondente viene
@@ -483,3 +454,46 @@ detect the repository where this extension is published"* perché `package.json`
 rotto lì, prima ancora di arrivare al publisher. Aggiunti `repository`, `bugs`, `homepage`,
 `license: MIT` e il file `LICENSE`; rimosso `tslint.json` (deprecato, si usa eslint) che finiva
 dentro il `.vsix`. Ora produce un pacchetto pulito: **7 file, 8,5 KB, zero warning**.
+
+### `vscode-marketplace-secret` — Manca il secret VSCE_PAT: il publish si salta invece di pubblicare
+
+- **status**: done
+- **priority**: medium
+- **labels**: github_actions, vscode
+- **milestone**: Estensione VSCode
+- **ref**: [audit-2026-08-11.md](audit-2026-08-11.md)
+
+> **CHIUSO**: il secret `VSCE_PAT` e stato aggiunto e l'estensione e **pubblicata**.
+> `allannava95.go-ddd-scaffold` **v0.1.0**, online dal 2026-08-12 09:39 UTC:
+> https://marketplace.visualstudio.com/items?itemName=allannava95.go-ddd-scaffold
+>
+> Il run e passato su tutti e tre i job, e ha fatto esattamente quello per cui era
+> disegnato: `Publish to VS Code Marketplace` **success**, `Publish to Open VSX`
+> **skipped** (manca `OVSX_PAT`) senza far fallire il job.
+>
+> Dopo la pubblicazione il trigger e stato semplificato su richiesta: adesso
+> **qualunque tag** fa da innesco e a decidere e la `version` del `package.json`,
+> confrontata con la gallery pubblica. Niente piu namespace di tag separato: per
+> rilasciare basta alzare la version, il tag successivo la pubblica e quelli dopo
+> non fanno nulla. Resta valido che `OVSX_PAT` e opzionale.
+
+Il repo **non ha nessun secret** configurato (`gh secret list` è vuoto): i vecchi
+`OPEN_VSX_TOKEN` / `VS_MARKETPLACE_TOKEN` a cui il workflow si riferiva non sono mai esistiti.
+È la ragione di fondo per cui il publish non poteva funzionare, al di là dei metadati.
+
+Ora `vscode-publish.yml` **salta** gli step di publish quando il token manca, invece di fallire:
+il `.vsix` viene comunque prodotto e caricato come artifact, e il riepilogo del run dice quale
+marketplace è stato saltato e perché. Quindi non c'è nulla di rotto — semplicemente non pubblica.
+
+Da fare (serve un'azione tua, i secret non posso crearli io):
+
+- [ ] aggiungere il secret **`VSCE_PAT`** al repo — Personal Access Token di Azure DevOps per il
+      publisher `allannava95`, scope *Marketplace → Manage*. È lo stesso tipo di token già usato in
+      `nomad-lens`;
+- [ ] opzionale: **`OVSX_PAT`** per Open VSX. Nemmeno `nomad-lens` ce l'ha, quindi oggi nessuna
+      delle due estensioni è su Open VSX: se non interessa, lo step resta saltato e va bene così;
+- [ ] valutare se tenere i token in un **environment** GitHub (`marketplace`) con protection rule,
+      come fa `nomad-lens`, invece che come secret di repo. In quel caso va aggiunto
+      `environment: marketplace` al job `publish`, altrimenti non li vede.
+
+Prima pubblicazione: tag `vscode-v0.1.0` (deve combaciare con `version` in `package.json`).

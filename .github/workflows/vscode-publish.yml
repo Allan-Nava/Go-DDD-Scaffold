@@ -2,12 +2,11 @@ name: 'Vscode Extension Publish'
 #
 on:
   push:
-    # Namespace di tag dedicato all'estensione, NON `v*`. In questo repo ogni
-    # commit porta un tag `vX.Y.Z` (vedi CLAUDE.md): pubblicare su quelli
-    # significherebbe una nuova versione sui marketplace a ogni commit, anche
-    # quando l'estensione non e stata toccata. Le versioni pubblicate sono
-    # immutabili e notificano gli utenti, quindi la pubblicazione e esplicita.
+    # Qualunque tag fa da innesco: a decidere se pubblicare e la `version` in
+    # extensions/vscode/package.json, non il tag (vedi il job `decide`). Cosi i
+    # tag normali del repo bastano, senza cerimonie aggiuntive.
     tags:
+      - "v*"
       - "vscode-v*"
   # Ripubblicazione manuale senza dover creare un tag.
   workflow_dispatch:
@@ -26,10 +25,53 @@ defaults:
     working-directory: extensions/vscode
 #
 jobs:
+  decide:
+    # In questo repo ogni commit porta un tag, ma una versione pubblicata sul
+    # Marketplace e **immutabile**: ripubblicare la stessa fallisce, e pubblicarne
+    # una nuova a ogni commit notifica gli utenti per modifiche che spesso non
+    # toccano nemmeno l'estensione. Quindi il tag fa solo da innesco: si pubblica
+    # se e solo se la version dichiarata non e ancora online.
+    name: serve pubblicare?
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      publish: ${{ steps.check.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          ID="$(node -p "const p=require('./package.json'); p.publisher+'.'+p.name")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          # Gallery pubblica, nessun token necessario.
+          PUBLISHED="$(curl -sS -X POST \
+            'https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery' \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json;api-version=7.1-preview.1' \
+            -d "{\"filters\":[{\"criteria\":[{\"filterType\":7,\"value\":\"$ID\"}]}],\"flags\":914}" \
+            | node -e "
+              let s=''; process.stdin.on('data',d=>s+=d).on('end',()=>{
+                const e=(JSON.parse(s).results?.[0]?.extensions)||[];
+                console.log(e.length ? e[0].versions.map(v=>v.version).join(' ') : '');
+              });")"
+          echo "gia pubblicate: ${PUBLISHED:-nessuna}"
+
+          if echo " $PUBLISHED " | grep -q " $VERSION "; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::$ID $VERSION e gia sul Marketplace: niente da pubblicare. Per rilasciare, alza \"version\" in extensions/vscode/package.json."
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$ID $VERSION non e ancora pubblicata: si procede."
+          fi
+
   verify:
     # Non si pubblica cio che non passa i gate: su un tag `go.yml` non gira
     # (reagisce solo a push su main e alle PR), quindi il controllo va rifatto qui.
     name: verify
+    needs: decide
+    if: needs.decide.outputs.publish == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,7 +86,7 @@ jobs:
 
   package:
     name: package
-    needs: verify
+    needs: [decide, verify]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -54,18 +96,6 @@ jobs:
           cache: npm
           cache-dependency-path: extensions/vscode/package-lock.json
       - run: npm ci
-
-      - name: Il tag deve combaciare con la version del package.json
-        # Solo per i tag: con workflow_dispatch si pubblica quello che c'e.
-        if: startsWith(github.ref, 'refs/tags/vscode-v')
-        run: |
-          TAG="${GITHUB_REF_NAME#vscode-v}"
-          PKG="$(node -p "require('./package.json').version")"
-          echo "tag=$TAG package.json=$PKG"
-          test "$TAG" = "$PKG" || {
-            echo "::error::il tag vscode-v$TAG non combacia con package.json ($PKG)"
-            exit 1
-          }
 
       # --no-dependencies: l'estensione non ha dipendenze runtime, quindi vsce
       # non deve ne risolverle ne includerle.
@@ -79,20 +109,20 @@ jobs:
       - name: Upload .vsix
         uses: actions/upload-artifact@v4
         with:
-          name: go-ddd-scaffold-vsix
+          name: go-ddd-scaffold-${{ needs.decide.outputs.version }}-vsix
           path: extensions/vscode/extension.vsix
           if-no-files-found: error
 
   publish:
     name: publish
-    needs: package
+    needs: [decide, package]
     runs-on: ubuntu-latest
     env:
       # Letti qui cosi gli `if` degli step possono verificarne la presenza:
-      # senza il secret lo step viene saltato invece di fallire, altrimenti ogni
-      # tag lascerebbe un job rosso su un repo che non ha ancora i token.
+      # senza il secret lo step viene saltato invece di fallire.
       VSCE_PAT: ${{ secrets.VSCE_PAT }}
       OVSX_PAT: ${{ secrets.OVSX_PAT }}
+      VERSION: ${{ needs.decide.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -113,7 +143,7 @@ jobs:
       - name: Riepilogo
         run: |
           {
-            echo "### Publish estensione VSCode"
+            echo "### Estensione VSCode $VERSION"
             if [ -n "$VSCE_PAT" ]; then
               echo "- Visual Studio Marketplace: pubblicata"
             else
