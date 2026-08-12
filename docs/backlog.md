@@ -103,6 +103,13 @@ Da fare:
 Non è più bloccato da `vscode-extension-rewrite` (chiuso: l'estensione ora funziona). Resta da
 fare perché richiede **il tuo publisher ID** del Marketplace, che non posso indovinare.
 
+Nel frattempo il **packaging è stato sbloccato e verificato**: `vsce package` falliva con *"Couldn't
+detect the repository where this extension is published"* perché `package.json` non aveva
+`repository`, e i link relativi del README non erano risolvibili — il publish su tag si sarebbe
+rotto lì, prima ancora di arrivare al publisher. Aggiunti `repository`, `bugs`, `homepage`,
+`license: MIT` e il file `LICENSE`; rimosso `tslint.json` (deprecato, si usa eslint) che finiva
+dentro il `.vsix`. Ora produce un pacchetto pulito: **7 file, 8,5 KB, zero warning**.
+
 ### `config-yml-double-source` — `config/config.yml` non è letto: doppia fonte di configurazione
 
 - **status**: open

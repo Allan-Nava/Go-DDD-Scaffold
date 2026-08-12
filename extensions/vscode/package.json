@@ -2,6 +2,15 @@
   "name": "go-ddd-scaffold",
   "displayName": "GO Domain Driven Design Scaffold",
   "description": "Generate a Go Domain Driven Design project layout from the editor, by driving the scaffold CLI.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Allan-Nava/Go-DDD-Scaffold.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Allan-Nava/Go-DDD-Scaffold/issues"
+  },
+  "homepage": "https://github.com/Allan-Nava/Go-DDD-Scaffold/tree/main/extensions/vscode",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.74.0"
