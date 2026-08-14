@@ -107,7 +107,7 @@ jobs:
       # `release: published`), i quali pubblicherebbero i binari della CLI Go
       # dentro una release dell'estensione.
       - name: Upload .vsix
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: go-ddd-scaffold-${{ needs.decide.outputs.version }}-vsix
           path: extensions/vscode/extension.vsix
