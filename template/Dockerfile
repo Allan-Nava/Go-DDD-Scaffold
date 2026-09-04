@@ -14,7 +14,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/{{.ProjectName}} ./cmd
 
 # Runtime stage: ~15 MB instead of the ~1 GB of the golang image.
-FROM alpine:3.20
+FROM alpine:3.24
 LABEL org.opencontainers.image.title="{{.ProjectName}}"
 
 RUN apk add --no-cache ca-certificates tzdata \

@@ -17,7 +17,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     -o /out/scaffold .
 
 # Runtime stage: a few MB instead of the ~1 GB of the golang image.
-FROM alpine:3.20
+FROM alpine:3.24
 LABEL org.opencontainers.image.title="Go-DDD-Scaffold" \
       org.opencontainers.image.source="https://github.com/Allan-Nava/Go-DDD-Scaffold" \
       maintainer="allan.nava@hiway.media"
