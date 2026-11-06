@@ -25,3 +25,6 @@ scaffold-cli-*
 # Python bytecode of the scripts in docs/scripts/
 __pycache__/
 *.pyc
+
+# release archives from build.sh
+dist/

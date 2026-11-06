@@ -1,26 +1,59 @@
 name: Build Release
 #
+# One release path, no third-party action: Go builds the 8 binaries, the
+# preinstalled gh CLI uploads them. It replaces Allan-Nava/go-release.action
+# (which received a contents:write token inside a container and silently fell
+# back to its own build when ./build.sh was not executable — that is what broke
+# every release after v0.7.7) and go-release.yml (a second, linux-only path
+# publishing the same thing).
 on:
   release:
-    # Only `published`: with a bare `on: release` the workflow also restarts on
-    # edited/unpublished/deleted, republishing the same assets.
+    # Only `published`: a bare `on: release` also fires on edited/deleted.
     types: [published]
+  workflow_dispatch:
+    # Builds (or rebuilds) the assets of an existing tag; the release is created
+    # if it does not exist yet. A release created with GITHUB_TOKEN does not
+    # fire `release: published`, so this does not run twice.
+    inputs:
+      tag:
+        description: "Tag to release, e.g. v0.9.0"
+        required: true
 #
 permissions:
   contents: read
 #
+concurrency:
+  group: release-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+#
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+#
 jobs:
-  release:
-    # One matrix instead of 8 copy-pasted jobs: the job names come from the
-    # goos/goarch pair, so they can no longer lie (there were three wrong
-    # labels — "macos/32" for darwin/amd64, "linux/386" for arm, "linux/amd64"
-    # for arm64 — and darwin/amd64 was duplicated in two jobs, while darwin/arm64
-    # was not published at all).
-    name: release ${{ matrix.goos }}/${{ matrix.goarch }}
+  prepare:
+    name: release exists
     runs-on: ubuntu-latest
     permissions:
-      # The minimum to upload assets to the release: it was `write-all` on each
-      # of the 8 jobs, with a third-party action in the same step.
+      contents: write
+    steps:
+      - name: Create the release when started by hand
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "release $TAG exists"
+          else
+            # --verify-tag: never create a tag here, only a release for a pushed one.
+            gh release create "$TAG" --verify-tag --generate-notes --title "$TAG"
+          fi
+
+  build:
+    name: release ${{ matrix.goos }}/${{ matrix.goarch }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      # The minimum to upload assets to the release.
       contents: write
     strategy:
       fail-fast: false
@@ -36,18 +69,25 @@ jobs:
           - { goos: windows, goarch: amd64 }
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
 
-      - name: compile and release
-        # Pinned to the SHA, not the tag: `@v1.5.01` is mutable and whoever controls
-        # the tag could rewrite this repo's release assets.
-        uses: Allan-Nava/go-release.action@ad979660e82cf6cd6cf4050bbec45fd4a26d6d25 # v1.5.01
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        id: build
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ env.TAG }}
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-          EXTRA_FILES: "LICENSE"
-          CMD_PATH: "main.go"
-          # BUILD_ARGS and PROJECT_NAME are deliberately absent: the action ignores
-          # them when the repo has an executable ./build.sh (it takes ours, and
-          # overwrites PROJECT_NAME with the repo's basename). The -trimpath/-ldflags
-          # build flags and the output name live in build.sh.
+        run: echo "archive=$(sh build.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARCHIVE: ${{ steps.build.outputs.archive }}
+        # --clobber: re-running the workflow replaces the assets instead of failing.
+        run: gh release upload "$TAG" "$ARCHIVE" "$ARCHIVE.sha256" --clobber

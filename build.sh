@@ -1,35 +1,54 @@
 #!/bin/sh
-# Builds the scaffold CLI and packages it for a release.
+# Builds the scaffold CLI for one GOOS/GOARCH and packages it for a release.
 #
-# CONTRACT: stdout carries ONLY the path of the built binary; every progress
-# message goes to stderr. release.yml runs this through go-release.action, whose
-# build.sh does `OUTPUT=$(./build.sh "$CMD_PATH")` and archives whatever it
-# printed — a stray log line there ends up in the release archive as a filename.
+#   VERSION=v0.9.0 GOOS=darwin GOARCH=arm64 sh build.sh
+#
+# Output: dist/scaffold_<version>_<goos>_<goarch>.tar.gz (.zip on windows), with
+# the binary, LICENSE and README.md, plus a .sha256 next to it. stdout carries
+# only the archive path; progress goes to stderr. release.yml calls it once per
+# matrix entry.
 set -eu
 
 VERSION="${VERSION:-dev}"
-GOOS="${GOOS:-linux}"
-GOARCH="${GOARCH:-amd64}"
-OUT_DIR="${OUT_DIR:-/tmp/bin}"
+GOOS="${GOOS:-$(go env GOOS)}"
+GOARCH="${GOARCH:-$(go env GOARCH)}"
+OUT_DIR="${OUT_DIR:-dist}"
 
-# Windows needs the .exe suffix or the artifact is not executable.
+# Windows needs the .exe suffix or the binary is not executable.
 EXT=""
 [ "${GOOS}" = "windows" ] && EXT=".exe"
-BIN="bin/scaffold${EXT}"
+
+NAME="scaffold_${VERSION}_${GOOS}_${GOARCH}"
+STAGE="${OUT_DIR}/${NAME}"
 
 echo "building scaffold ${VERSION} for ${GOOS}/${GOARCH}" >&2
+rm -rf "${STAGE}"
+mkdir -p "${STAGE}"
 
 # -trimpath keeps absolute build paths out of the binary; -s -w drops the
-# symbol table and DWARF data. The output goes under bin/: "-o scaffold" would
-# resolve to the existing scaffold/ package directory and land inside it.
+# symbol table and DWARF data. Never "-o scaffold": it would resolve to the
+# existing scaffold/ package directory and land inside it.
 CGO_ENABLED=0 GOOS="${GOOS}" GOARCH="${GOARCH}" go build \
 	-trimpath \
 	-ldflags="-s -w -X main.version=${VERSION}" \
-	-o "${BIN}" . >&2
+	-o "${STAGE}/scaffold${EXT}" . >&2
+cp LICENSE README.md "${STAGE}/"
 
-mkdir -p "${OUT_DIR}"
-tar -czf "${OUT_DIR}/go-scaffold.tar.gz" -C bin "scaffold${EXT}" >&2
-ls -l "${OUT_DIR}/go-scaffold.tar.gz" >&2
+if [ "${GOOS}" = "windows" ]; then
+	ARCHIVE="${OUT_DIR}/${NAME}.zip"
+	# zip is not everywhere (WSL, slim images); python3's zipfile is the fallback.
+	if command -v zip >/dev/null 2>&1; then
+		(cd "${OUT_DIR}" && rm -f "${NAME}.zip" && zip -qr "${NAME}.zip" "${NAME}") >&2
+	else
+		(cd "${OUT_DIR}" && rm -f "${NAME}.zip" && python3 -m zipfile -c "${NAME}.zip" "${NAME}") >&2
+	fi
+else
+	ARCHIVE="${OUT_DIR}/${NAME}.tar.gz"
+	tar -czf "${ARCHIVE}" -C "${OUT_DIR}" "${NAME}" >&2
+fi
+rm -rf "${STAGE}"
 
-# The one line on stdout: what the caller should archive.
-echo "${BIN}"
+(cd "${OUT_DIR}" && sha256sum "$(basename "${ARCHIVE}")" > "$(basename "${ARCHIVE}").sha256") >&2
+ls -l "${ARCHIVE}" >&2
+
+echo "${ARCHIVE}"

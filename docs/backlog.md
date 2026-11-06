@@ -105,7 +105,7 @@ stopgap, not a decision.
 
 ### `release-drop-thirdparty-action` — release.yml: consider dropping the third-party action entirely
 
-- **status**: open
+- **status**: done
 - **priority**: low
 - **labels**: github_actions, enhancement
 - **milestone**: Hardening CI/CD
@@ -126,6 +126,14 @@ To decide:
 2. **keep it**, and then retire `go-release.yml`, so the two paths stop overlapping.
 
 Either way **one** of the two workflows has to be chosen: today's duplication is the real problem.
+
+**Closed in v0.9.1 with option 1**, forced by a real failure: the action had never used our
+`build.sh`, because the file was committed without the executable bit (`100644`); the action fell
+back to its own `go build` branch and died on `BUILD_ARGS: parameter not set` (`set -u`). Every
+release after v0.7.7 failed that way, so "Latest" stayed at v0.8.2. `release.yml` is now native —
+`setup-go` + `build.sh` per `goos/goarch` + `gh release upload` — with a `.sha256` per archive and a
+`workflow_dispatch` that creates the release for a pushed tag. `go-release.yml` was deleted: one
+release path.
 
 ### `pages-config-stale` — GitHub Pages: stale config and a build never seen green
 

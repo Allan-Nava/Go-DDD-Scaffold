@@ -52,6 +52,15 @@ cd Go-DDD-Scaffold
 make build      # -> bin/scaffold
 ```
 
+Or download a prebuilt binary from the
+[latest release](https://github.com/Allan-Nava/Go-DDD-Scaffold/releases/latest)
+(linux, macOS and Windows; each archive has a `.sha256` next to it):
+
+```sh
+curl -fsSLO https://github.com/Allan-Nava/Go-DDD-Scaffold/releases/download/v0.9.1/scaffold_v0.9.1_linux_amd64.tar.gz
+tar -xzf scaffold_v0.9.1_linux_amd64.tar.gz && sudo mv scaffold_v0.9.1_linux_amd64/scaffold /usr/local/bin/
+```
+
 Or run it from the container image, generating into the current directory:
 
 ```sh
