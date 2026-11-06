@@ -13,6 +13,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 
 	"{{.ProjectPath}}/database"
 	"{{.ProjectPath}}/env"
@@ -79,14 +80,19 @@ func main() {
 	app := newApp("{{.ProjectName}}", cfg.CORSAllowedOrigins)
 
 	// The database is optional, so a freshly generated project runs without one.
+	var db *gorm.DB
 	if cfg.DBHost != "" {
-		db, err := database.InitDB(log, cfg)
+		db, err = database.InitDB(log, cfg)
 		if err != nil {
 			log.Fatalw("cannot open the database", "err", err)
 		}
-		_ = db // wire your repositories here
 	} else {
 		log.Warn("DB_HOST is empty: starting without a database")
+	}
+
+	// Every bounded context under /api (see cmd/modules.go).
+	if err := mountModules(app.Group("/api"), deps{db: db, log: log}); err != nil {
+		log.Fatalw("cannot mount the modules", "err", err)
 	}
 
 	go func() {

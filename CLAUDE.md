@@ -1,6 +1,6 @@
 # CLAUDE.md — Go-DDD-Scaffold
 
-A CLI generator (`github.com/Allan-Nava/Go-DDD-Scaffold`) that creates the skeleton of a Go project with a Domain Driven Design layout: the `scaffold init` CLI (`main.go` + `scaffold/`), the generated project's templates (`template/`, `static/`, **embedded in the binary**), a twin VS Code extension (`extensions/vscode/`), a static site on GitHub Pages (`docs/index.html`, same model as the other projects: no build), GitHub Actions CI (`.github/workflows/`).
+A CLI generator (`github.com/Allan-Nava/Go-DDD-Scaffold`) that creates the skeleton of a Go project with a Domain Driven Design layout: the `scaffold init` CLI (`main.go` + `scaffold/`), the generated project's templates (`template/`, `static/`, `module/`, **embedded in the binary**), the `scaffold add module` command, a twin VS Code extension (`extensions/vscode/`), a static site on GitHub Pages (`docs/index.html`, same model as the other projects: no build), GitHub Actions CI (`.github/workflows/`).
 
 ## Working rules (ALWAYS)
 
@@ -27,6 +27,10 @@ A CLI generator (`github.com/Allan-Nava/Go-DDD-Scaffold`) that creates the skele
 
 ## Known traps / technical rules
 
+- **Three asset trees, three rules**: `template/` is rendered once by `init`; `static/` is copied byte for byte; `module/` is **one bounded context**, rendered by `init` for the example (`catalog`/`Product`) and by `add module` for each new one, with `__module__` in a path replaced by the module name. Module data: `.Module`, `.ModuleTitle`, `.Entity`, `.EntityVar`, `.Table`. Anything that must exist once per project goes in `template/` (e.g. `cmd/modules.go`, `internal/archtest`); anything per module goes in `module/`.
+- **`add module` never edits an existing file**: each module's `cmd/module_<name>.go` registers itself with `register(...)` in an `init()`. Do not replace it with "insert a line into main.go at a marker": that breaks on the first hand edit and makes `add module` non-idempotent.
+- **Module templates must be gofmt-clean for any name length**: no column alignment that depends on `{{.Entity}}`/`{{.Module}}` (struct fields, trailing comments, `=` in var blocks). That is why CI, `make e2e` and `TestGeneratedGoFilesAreValidAndFormatted` add a second module with a **multi-word** entity (`InvoiceLine`). And no lists or indented blocks in **doc comments** of templates: `go/format` and `gofmt` rewrite them differently, and the format test fails.
+- **The domain imports the standard library only** — in the templates too. `internal/archtest` in the generated project fails otherwise; keep it passing with every template change.
 - **`text/template`, NEVER `html/template`**: `html/template` HTML-escapes **Go code** (`&&` → `&amp;&amp;`, `<-` → `&lt;-`) and produces broken sources. It was the reason for the `unescaped` helper and the `data.Quit = "<-quit"` field: workarounds for a bug, not features. Both removed; `TestGenerateDoesNotEscapeGoOperators` is the regression test.
 - **`template/` cannot contain a `go.mod`**: it would make the directory a separate module and `//go:embed all:template` would fail with *"cannot embed directory template: in different module"*. That is why the template is called `go.mod.tpl`.
 - **Two suffixes, two rules**: `.tmpl` → `.go` (`cmd/main.tmpl` → `cmd/main.go`); `.tpl` → loses the suffix (`go.mod.tpl` → `go.mod`). Files with no suffix in `template/` (`Dockerfile`, `README.md`, `env/.env.local`) still go through the template engine: they can use `{{.ProjectName}}`, but a literal `{{` breaks them. `static/` instead is a byte-for-byte copy, with no rendering — that is where a file with literal `{{` goes.
@@ -57,7 +61,7 @@ A CLI generator (`github.com/Allan-Nava/Go-DDD-Scaffold`) that creates the skele
 - **Product audit and milestones towards v1**: [docs/audit-2026-11-06.md](docs/audit-2026-11-06.md)
 - **VS Code extension** (`extensions/vscode/`): rewritten as a wrapper of the CLI. `src/scaffold/cli.ts` is **pure** — it does not import `vscode` — and that is where the logic lives (binary discovery, argv, output parsing); its tests run with `node --test`, with no editor host (`npm test`). The editor API is only in `extension.ts` and `commands/init.ts`. Zero runtime dependencies: do not add any for convenience. `go install` produces a binary called **`Go-DDD-Scaffold`** (after the module), not `scaffold`: discovery looks for both, and also looks in `$GOBIN`/`$GOPATH/bin`/`~/go/bin` because a GUI editor does not read the shell profile. A same-named program that does not answer `scaffold version` must be discarded, not run. Published on the Marketplace as `allannava95.go-ddd-scaffold`.
 - **`node --test <directory>` does not work** on every Node version (on 23.3 it gives `MODULE_NOT_FOUND` on the dir): use the glob `node --test "out/**/*.test.js"`.
-- Generated project stack: Fiber v2, GORM (MySQL), zap, `caarlos0/env/v11`, godotenv
+- Generated project stack: Fiber v2, GORM (MySQL), zap, `caarlos0/env/v11`, godotenv. DDD layout and its rules: [docs/ddd-guide.md](docs/ddd-guide.md). DI is manual on purpose (Wire is archived): do not add a container.
 
 ## graphify
 

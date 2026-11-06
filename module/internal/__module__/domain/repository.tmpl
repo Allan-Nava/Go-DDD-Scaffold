@@ -1,0 +1,15 @@
+package domain
+
+import "context"
+
+// Repository is the port through which the application loads and stores
+// {{.Entity}} aggregates. It is declared here, by the domain that needs it,
+// and implemented in infrastructure: the dependency points inwards.
+type Repository interface {
+	// Save inserts or updates the aggregate.
+	Save(ctx context.Context, e *{{.Entity}}) error
+	// ByID returns ErrNotFound when no {{.Entity}} has that id.
+	ByID(ctx context.Context, id ID) (*{{.Entity}}, error)
+	// List returns every {{.Entity}}, oldest first.
+	List(ctx context.Context) ([]*{{.Entity}}, error)
+}

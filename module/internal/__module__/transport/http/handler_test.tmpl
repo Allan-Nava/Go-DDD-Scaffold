@@ -1,0 +1,88 @@
+package httptransport
+
+import (
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"github.com/gofiber/fiber/v2"
+	"go.uber.org/zap"
+
+	"{{.ProjectPath}}/internal/{{.Module}}/application"
+	"{{.ProjectPath}}/internal/{{.Module}}/infrastructure"
+)
+
+// The handler is tested through real HTTP requests on the real use cases, with
+// the in-memory repository: what is checked is the HTTP contract.
+
+func newTestApp() *fiber.App {
+	app := fiber.New()
+	svc := application.NewService(infrastructure.NewMemoryStore())
+	NewHandler(svc, zap.NewNop().Sugar()).Register(app.Group("/{{.Module}}"))
+	return app
+}
+
+func call(t *testing.T, app *fiber.App, method, path, body string) (int, response) {
+	t.Helper()
+	var r io.Reader
+	if body != "" {
+		r = strings.NewReader(body)
+	}
+	req := httptest.NewRequest(method, path, r)
+	req.Header.Set("Content-Type", "application/json")
+	res, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("%s %s: %v", method, path, err)
+	}
+	defer res.Body.Close()
+
+	var out response
+	if res.StatusCode < 300 {
+		_ = json.NewDecoder(res.Body).Decode(&out)
+	}
+	return res.StatusCode, out
+}
+
+func TestLifecycleOverHTTP(t *testing.T) {
+	app := newTestApp()
+
+	code, created := call(t, app, http.MethodPost, "/{{.Module}}", `{"name":"first"}`)
+	if code != http.StatusCreated || created.ID == "" || created.Status != "active" {
+		t.Fatalf("create = %d %+v", code, created)
+	}
+	base := "/{{.Module}}/" + created.ID
+
+	if code, got := call(t, app, http.MethodPatch, base, `{"name":"renamed"}`); code != http.StatusOK || got.Name != "renamed" {
+		t.Errorf("rename = %d %+v", code, got)
+	}
+	if code, got := call(t, app, http.MethodPost, base+"/archive", ""); code != http.StatusOK || got.Status != "archived" {
+		t.Errorf("archive = %d %+v", code, got)
+	}
+	if code, _ := call(t, app, http.MethodPost, base+"/archive", ""); code != http.StatusConflict {
+		t.Errorf("second archive = %d, want 409", code)
+	}
+	if code, got := call(t, app, http.MethodGet, base, ""); code != http.StatusOK || got.Name != "renamed" {
+		t.Errorf("get = %d %+v", code, got)
+	}
+}
+
+func TestErrorsMapToStatusCodes(t *testing.T) {
+	app := newTestApp()
+
+	for _, tc := range []struct {
+		method, path, body string
+		want               int
+	}{
+		{http.MethodPost, "/{{.Module}}", `{"name":""}`, http.StatusUnprocessableEntity},
+		{http.MethodPost, "/{{.Module}}", `not json`, http.StatusBadRequest},
+		{http.MethodGet, "/{{.Module}}/missing", "", http.StatusNotFound},
+		{http.MethodPost, "/{{.Module}}/missing/archive", "", http.StatusNotFound},
+	} {
+		if code, _ := call(t, app, tc.method, tc.path, tc.body); code != tc.want {
+			t.Errorf("%s %s %s = %d, want %d", tc.method, tc.path, tc.body, code, tc.want)
+		}
+	}
+}

@@ -17,6 +17,8 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"golang.org/x/mod/modfile"
 )
 
 const (
@@ -26,6 +28,10 @@ const (
 	// "go.mod.tpl" -> "go.mod". It also keeps a nested go.mod from turning
 	// template/ into a separate module, which would break the embedding.
 	tplExt = ".tpl"
+
+	// modulePlaceholder in a ModuleTemplates path becomes the module name:
+	// "internal/__module__/domain/model.tmpl" -> "internal/billing/domain/model.go".
+	modulePlaceholder = "__module__"
 
 	dirPerm  os.FileMode = 0o755
 	filePerm os.FileMode = 0o644
@@ -38,6 +44,15 @@ type Options struct {
 	Templates fs.FS
 	// Static is copied verbatim, so it can hold files with literal "{{".
 	Static fs.FS
+	// ModuleTemplates is the tree of one bounded context, rendered once per
+	// module: "__module__" in a path becomes the module name. Generate renders
+	// it for the example module, AddModule for the one asked.
+	ModuleTemplates fs.FS
+	// Example is the bounded context Generate adds to a new project. The zero
+	// value means DefaultExample; NoExample skips it.
+	Example ModuleSpec
+	// NoExample generates the project without the example module.
+	NoExample bool
 	// Force overwrites destination files that already exist. Without it,
 	// existing files are left untouched and reported as skipped.
 	Force bool
@@ -77,6 +92,13 @@ type data struct {
 	AbsGenProjectPath string // absolute path of the generated project
 	ProjectPath       string // Go module path (eg. github.com/fooOrg/foo)
 	ProjectName       string // project name, ie. the destination directory name
+
+	// Set only while rendering ModuleTemplates.
+	Module      string // bounded context: folder, route and table prefix ("billing")
+	ModuleTitle string // exported form of Module ("Billing")
+	Entity      string // aggregate type name ("Invoice")
+	EntityVar   string // Entity as a word in messages ("invoice")
+	Table       string // database table ("billing_invoice")
 }
 
 // Generate renders the assets into dest, creating it if needed.
@@ -94,10 +116,24 @@ func (s *Scaffold) Generate(dest string) (Result, error) {
 	}
 	s.debugf("generate dest=%s module=%s\n", absDest, d.ProjectPath)
 
+	// The example module is validated with the rest, before the first write.
+	var example *data
+	if s.opts.ModuleTemplates != nil && !s.opts.NoExample {
+		spec := s.opts.Example
+		if spec.Name == "" {
+			spec = DefaultExample
+		}
+		md, err := moduleData(d, spec)
+		if err != nil {
+			return Result{}, err
+		}
+		example = &md
+	}
+
 	w := &writer{root: absDest, force: s.opts.Force, log: s.opts.Log, dirs: make(map[string]struct{})}
 
 	if s.opts.Templates != nil {
-		if err := s.render(w, d); err != nil {
+		if err := s.render(w, s.opts.Templates, d); err != nil {
 			return w.result, err
 		}
 	}
@@ -106,7 +142,47 @@ func (s *Scaffold) Generate(dest string) (Result, error) {
 			return w.result, err
 		}
 	}
+	if example != nil {
+		if err := s.render(w, s.opts.ModuleTemplates, *example); err != nil {
+			return w.result, err
+		}
+	}
 	return w.result, nil
+}
+
+// AddModule renders ModuleTemplates for one more bounded context into an
+// existing project: projectDir must hold the go.mod and the cmd/modules.go
+// composition root that `scaffold init` generates.
+func (s *Scaffold) AddModule(projectDir string, spec ModuleSpec) (Result, error) {
+	if s.opts.ModuleTemplates == nil {
+		return Result{}, errors.New("no module templates")
+	}
+	absDir, err := filepath.Abs(projectDir)
+	if err != nil {
+		return Result{}, err
+	}
+
+	gomod, err := os.ReadFile(filepath.Join(absDir, "go.mod"))
+	if err != nil {
+		return Result{}, fmt.Errorf("no go.mod in %s: run scaffold add module from the project root", absDir)
+	}
+	modPath := modfile.ModulePath(gomod)
+	if modPath == "" {
+		return Result{}, fmt.Errorf("%s/go.mod has no module line", absDir)
+	}
+	if _, err := os.Stat(filepath.Join(absDir, "cmd", "modules.go")); err != nil {
+		return Result{}, fmt.Errorf("cmd/modules.go not found in %s: modules plug into the composition root that scaffold init v1.0+ generates", absDir)
+	}
+
+	d, err := moduleData(data{AbsGenProjectPath: absDir, ProjectPath: modPath, ProjectName: filepath.Base(absDir)}, spec)
+	if err != nil {
+		return Result{}, err
+	}
+	s.debugf("add module %s (entity %s) in %s\n", d.Module, d.Entity, absDir)
+
+	w := &writer{root: absDir, force: s.opts.Force, log: s.opts.Log, dirs: make(map[string]struct{})}
+	err = s.render(w, s.opts.ModuleTemplates, d)
+	return w.result, err
 }
 
 // projectData resolves and validates the project name and module path.
@@ -142,13 +218,13 @@ func (s *Scaffold) projectData(absDest string) (data, error) {
 
 // render walks the template tree, parsing and executing each file in a single
 // pass — no intermediate slice, and each template is read and parsed once.
-func (s *Scaffold) render(w *writer, d data) error {
-	return fs.WalkDir(s.opts.Templates, ".", func(p string, entry fs.DirEntry, err error) error {
+func (s *Scaffold) render(w *writer, fsys fs.FS, d data) error {
+	return fs.WalkDir(fsys, ".", func(p string, entry fs.DirEntry, err error) error {
 		if err != nil || entry.IsDir() {
 			return err
 		}
 
-		src, err := fs.ReadFile(s.opts.Templates, p)
+		src, err := fs.ReadFile(fsys, p)
 		if err != nil {
 			return err
 		}
@@ -161,6 +237,9 @@ func (s *Scaffold) render(w *writer, d data) error {
 		}
 
 		rel := p
+		if d.Module != "" {
+			rel = strings.ReplaceAll(rel, modulePlaceholder, d.Module)
+		}
 		switch {
 		case strings.HasSuffix(rel, tmplExt):
 			rel = strings.TrimSuffix(rel, tmplExt) + ".go"

@@ -311,7 +311,7 @@ To be decided together with `config-yml-double-source`.
 
 ### `ddd-layout-generated` — The generated project contains no DDD layer
 
-- **status**: open
+- **status**: done
 - **priority**: high
 - **labels**: enhancement, template
 - **milestone**: v1.0 — Real DDD in the generated project
@@ -329,13 +329,15 @@ internal/<module>/infrastructure/  GORM store implementing the repository
 internal/<module>/transport/http/  HTTP handlers ⇄ use cases
 ```
 
-- [ ] example module with tests at every layer (domain without a database, store with a fake or sqlite)
-- [ ] composition root in `cmd/` wiring the layers (manual DI; Wire as an option in `di-wiring`)
-- [ ] README and `docs/index.html` updated with the tree and "where the rules go"
+- [x] example module with tests at every layer (domain without a database, store with a fake or sqlite)
+- [x] composition root in `cmd/` wiring the layers (manual DI; Wire as an option in `di-wiring`)
+- [x] README and `docs/index.html` updated with the tree and "where the rules go"
+
+**Closed in v1.0.0**: `scaffold init` generates `internal/catalog/` (a `Product` aggregate with a `Name` value object and an archive rule) in four layers — `domain`, `application`, `infrastructure` (GORM store + in-memory store, row ⇄ aggregate mapping), `transport/http` — with tests at every layer, none needing a database. The composition root is `cmd/modules.go` plus one `cmd/module_<name>.go` per module; with `DB_HOST` empty a module falls back to the in-memory store. `--no-example` skips it. The module tree lives in `module/` (a third embedded asset set, `__module__` in paths), so `init` and `add module` render the same templates. Not verified against a live MySQL in this session (no Docker): the GORM store compiles and is wired, the mapping is unit-tested.
 
 ### `scaffold-add-module` — `scaffold add module <name>` command to generate a new bounded context
 
-- **status**: open
+- **status**: done
 - **priority**: high
 - **labels**: enhancement, go
 - **milestone**: v1.0 — Real DDD in the generated project
@@ -345,9 +347,11 @@ After `init` there must be a way to add a domain without copying the example mod
 `scaffold add module billing` generates the four layers, the tests and the registration in the
 composition root. Idempotent like `init` (skip without `--force`); also exposed in the VS Code extension.
 
+**Closed in v1.0.0**: `scaffold add module [--entity Name] [--dir path] [--force] <name>` reads the module path from `go.mod`, requires `cmd/modules.go`, validates the names before writing, and generates the four layers, their tests and `cmd/module_<name>.go`, which registers itself (`init()` + `register`): no existing file is edited. Idempotent like `init`. VS Code extension 0.3.0: *Go DDD: Add Bounded Context*. CI and `make e2e` add a second module with a multi-word entity, so a template that is gofmt-clean only for one name length fails.
+
 ### `architecture-test` — Architecture test in the generated project: the domain does not import infrastructure
 
-- **status**: open
+- **status**: done
 - **priority**: medium
 - **labels**: enhancement, template
 - **milestone**: v1.0 — Real DDD in the generated project
@@ -357,9 +361,11 @@ An `internal/archtest` that reads imports with `go/packages` (or `go list -json`
 imports `infrastructure`/`transport` or a third-party package (GORM, Fiber). It makes the DDD rule
 checkable in CI instead of relying on review.
 
+**Closed in v1.0.0**: `internal/archtest` parses imports with `go/parser` (no `go/packages` dependency): `domain` may import only the standard library and other domains; `application` may not import infrastructure, transport, GORM or Fiber. Test files are exempt. The checker is tested itself (a table of allowed/forbidden paths and a file with a forbidden import), and was verified by adding `import _ "gorm.io/gorm"` to a generated domain: `go test` fails with the file and the reason.
+
 ### `di-wiring` — Dependency injection: explicit composition root, Wire as an option
 
-- **status**: open
+- **status**: done
 - **priority**: low
 - **labels**: enhancement, template
 - **milestone**: v1.0 — Real DDD in the generated project
@@ -368,9 +374,11 @@ checkable in CI instead of relying on review.
 The default stays manual DI in `cmd/` (readable, no tooling). `--di wire` generates `wire.go` and
 `wire_gen.go` for those who prefer it.
 
+**Closed in v1.0.0**: **Decided: manual DI only, no `--di wire`.** `google/wire` was archived in August 2025, so generating code for it would tie new projects to an unmaintained tool; runtime containers (`dig`, `fx`) move errors from compile time to startup. The composition root stays plain Go, one function per module. Explained in [ddd-guide.md](ddd-guide.md).
+
 ### `ddd-guide-docs` — Guide to the generated DDD layout: where the rules go, anemic vs rich model
 
-- **status**: open
+- **status**: done
 - **priority**: medium
 - **labels**: documentation
 - **milestone**: v1.0 — Real DDD in the generated project
@@ -378,6 +386,8 @@ The default stays manual DI in `cmd/` (readable, no tooling). `--di wire` genera
 
 A page in `docs/` with the layer diagram, the inward dependency rule, an example of a rule in the
 aggregate versus the same rule in the service (anemic model), and when each one fits.
+
+**Closed in v1.0.0**: [ddd-guide.md](ddd-guide.md): the layer tree, the dependency rule diagram, the same rule in the aggregate and in an anemic service with a table of when each fits, value objects, what each layer's tests cover, running without a database, adding and removing a module, and why there is no DI framework. Linked from the README, the generated README ("Where the rules go") and the site.
 
 ### `health-readiness` — `/livez` and `/readyz`: today `/health` does not check the database
 

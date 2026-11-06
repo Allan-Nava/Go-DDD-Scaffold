@@ -11,27 +11,38 @@ Generate a Domain Driven Design project layout for Go. Site: <https://allan-nava
 The templates are embedded in the binary, so `scaffold` runs anywhere — no
 `$GOPATH`, no repository checkout beside it.
 
-The generated layout:
+The generated layout — a service with one example **bounded context** in four DDD layers, and
+a test that enforces the dependency rule:
 
 ```
-├── Dockerfile           # multi-stage build, alpine runtime
-├── docker-compose.yml   # service + MySQL
+├── cmd
+│   ├── main.go              # HTTP entrypoint: config, middlewares, graceful shutdown
+│   ├── main_test.go         # /health, CORS, every module mounts without a database
+│   ├── modules.go           # composition root: mounts every module under /api
+│   └── module_catalog.go    # wires catalog: store → service → handler
+├── internal
+│   ├── catalog              # the example bounded context (Product aggregate)
+│   │   ├── domain           # aggregate, value object, errors, repository port — stdlib only
+│   │   ├── application      # use cases: load → ask the aggregate → save
+│   │   ├── infrastructure   # GORM store, in-memory store, row ⇄ aggregate mapping
+│   │   └── transport/http   # HTTP ⇄ use cases, domain errors ⇄ status codes
+│   └── archtest             # fails `go test` when domain/application import what they must not
+├── database/db.go           # GORM connection pool
+├── env
+│   ├── env.go               # configuration from the environment
+│   ├── env_test.go          # pins the envDefault tags
+│   └── .env.local           # local values, git-ignored; DB_HOST empty = no database
+├── config/config.yml        # non-secret tunables
+├── Dockerfile               # multi-stage build, alpine runtime
+├── docker-compose.yml       # service + MySQL
 ├── Makefile
 ├── README.md
 ├── .dockerignore
-├── .gitignore           # bin/ and env/.env.* stay out of the first commit
-├── cmd
-│   ├── main.go          # HTTP entrypoint: config, middlewares, graceful shutdown
-│   └── main_test.go     # smoke test of /health through app.Test (no port needed)
-├── config
-│   └── config.yml       # non-secret tunables
-├── database
-│   └── db.go            # GORM connection pool
-└── env
-    ├── env.go           # configuration from the environment
-    ├── env_test.go      # pins the envDefault tags
-    └── .env.local       # local values, git-ignored; DB_HOST empty = no database
+└── .gitignore               # bin/ and env/.env.* stay out of the first commit
 ```
+
+Every layer has its tests, and none of them needs a database. Where each rule goes, and the rich
+versus anemic trade-off: **[the generated DDD layout](docs/ddd-guide.md)**.
 
 Stack: [Fiber](https://github.com/gofiber/fiber) · [GORM](https://gorm.io) ·
 [zap](https://github.com/uber-go/zap) · [caarlos0/env](https://github.com/caarlos0/env) ·
@@ -103,13 +114,31 @@ The generated `env/.env.local` leaves `DB_HOST` empty, so the service starts
 without a database; `make up` brings it up together with MySQL. CORS is closed
 until you list origins in `CORS_ALLOWED_ORIGINS`.
 
-### Flags
+### Add a bounded context
+
+```sh
+scaffold add module billing --entity Invoice
+```
+
+Generates `internal/billing/{domain,application,infrastructure,transport/http}` with their tests,
+and `cmd/module_billing.go`, which registers the module in the composition root — no existing
+file is edited. Its routes are under `/api/billing`. Run it from the project root (or pass
+`--dir`); like `init`, it skips existing files unless `--force`.
+
+| Flag | Effect |
+| --- | --- |
+| `--entity` | aggregate type name, CamelCase (default: the module name, capitalised) |
+| `--dir` | project root, where `go.mod` is (default: the current directory) |
+| `--force`, `-f` | overwrite files that already exist |
+
+### Flags of `init`
 
 | Flag | Effect |
 | --- | --- |
 | `scaffold init [dir]` | generate into `dir` instead of the current directory |
 | `--module`, `-m` | Go module path for `go.mod` (default: inferred, see above) |
 | `--name` | project name: lowercase letters, digits, `-`, `_`, `.` (default: the directory name, normalised) |
+| `--no-example` | skip the example `catalog` module |
 | `--force`, `-f` | overwrite files that already exist |
 | `--debug` | trace what the generator is doing |
 
@@ -124,7 +153,7 @@ truncates or deletes what was there, with or without `--force`.
 make check   # gofmt + go vet
 make lint    # golangci-lint (errcheck & co., see .golangci.yml)
 make test    # unit tests
-make e2e     # generates a project in a temp dir, compiles it, starts it like `make run`
+make e2e     # generates a project + a second module, compiles it, starts it like `make run`
 make docker  # build the container image
 ```
 

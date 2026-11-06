@@ -1,0 +1,67 @@
+package infrastructure
+
+import (
+	"context"
+	"sort"
+	"sync"
+
+	"{{.ProjectPath}}/internal/{{.Module}}/domain"
+)
+
+// MemoryStore keeps {{.Entity}} aggregates in memory. It stores records, not
+// pointers, so a caller that changes an aggregate without calling Save changes
+// nothing — the same behaviour as the database.
+type MemoryStore struct {
+	mu   sync.RWMutex
+	rows map[string]record
+}
+
+// NewMemoryStore returns an empty MemoryStore.
+func NewMemoryStore() *MemoryStore {
+	return &MemoryStore{rows: make(map[string]record)}
+}
+
+// Save implements domain.Repository.
+func (s *MemoryStore) Save(_ context.Context, e *domain.{{.Entity}}) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.rows[string(e.ID())] = toRecord(e)
+	return nil
+}
+
+// ByID implements domain.Repository.
+func (s *MemoryStore) ByID(_ context.Context, id domain.ID) (*domain.{{.Entity}}, error) {
+	s.mu.RLock()
+	r, ok := s.rows[string(id)]
+	s.mu.RUnlock()
+	if !ok {
+		return nil, domain.ErrNotFound
+	}
+	return r.toDomain()
+}
+
+// List implements domain.Repository.
+func (s *MemoryStore) List(_ context.Context) ([]*domain.{{.Entity}}, error) {
+	s.mu.RLock()
+	rows := make([]record, 0, len(s.rows))
+	for _, r := range s.rows {
+		rows = append(rows, r)
+	}
+	s.mu.RUnlock()
+
+	sort.Slice(rows, func(i, j int) bool {
+		if rows[i].CreatedAt.Equal(rows[j].CreatedAt) {
+			return rows[i].ID < rows[j].ID
+		}
+		return rows[i].CreatedAt.Before(rows[j].CreatedAt)
+	})
+	out := make([]*domain.{{.Entity}}, 0, len(rows))
+	for _, r := range rows {
+		e, err := r.toDomain()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, nil
+}

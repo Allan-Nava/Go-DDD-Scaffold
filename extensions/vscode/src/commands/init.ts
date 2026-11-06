@@ -182,7 +182,7 @@ async function reportSuccess(
 	}
 }
 
-async function reportFailure(
+export async function reportFailure(
 	err: unknown,
 	output: vscode.OutputChannel,
 ): Promise<void> {

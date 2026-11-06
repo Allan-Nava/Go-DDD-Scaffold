@@ -1,0 +1,69 @@
+package infrastructure
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"gorm.io/gorm"
+
+	"{{.ProjectPath}}/internal/{{.Module}}/domain"
+)
+
+// GormStore stores {{.Entity}} aggregates in the "{{.Table}}" table.
+type GormStore struct {
+	db *gorm.DB
+}
+
+// NewGormStore returns a GormStore on db.
+func NewGormStore(db *gorm.DB) *GormStore {
+	return &GormStore{db: db}
+}
+
+// Migrate creates or updates the table. AutoMigrate is enough to start;
+// versioned migrations are on the roadmap.
+func (s *GormStore) Migrate() error {
+	if err := s.db.AutoMigrate(&record{}); err != nil {
+		return fmt.Errorf("migrate {{.Table}}: %w", err)
+	}
+	return nil
+}
+
+// Save implements domain.Repository: an upsert on the primary key.
+func (s *GormStore) Save(ctx context.Context, e *domain.{{.Entity}}) error {
+	r := toRecord(e)
+	if err := s.db.WithContext(ctx).Save(&r).Error; err != nil {
+		return fmt.Errorf("save {{.EntityVar}} %s: %w", r.ID, err)
+	}
+	return nil
+}
+
+// ByID implements domain.Repository.
+func (s *GormStore) ByID(ctx context.Context, id domain.ID) (*domain.{{.Entity}}, error) {
+	var r record
+	err := s.db.WithContext(ctx).First(&r, "id = ?", string(id)).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, domain.ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("load {{.EntityVar}} %s: %w", id, err)
+	}
+	return r.toDomain()
+}
+
+// List implements domain.Repository.
+func (s *GormStore) List(ctx context.Context) ([]*domain.{{.Entity}}, error) {
+	var rows []record
+	if err := s.db.WithContext(ctx).Order("created_at, id").Find(&rows).Error; err != nil {
+		return nil, fmt.Errorf("list {{.EntityVar}}: %w", err)
+	}
+	out := make([]*domain.{{.Entity}}, 0, len(rows))
+	for _, r := range rows {
+		e, err := r.toDomain()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, nil
+}

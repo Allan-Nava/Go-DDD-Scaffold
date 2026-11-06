@@ -4,6 +4,15 @@ All notable changes to the "go-ddd-scaffold" extension will be documented in thi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.3.0]
+
+### Added
+
+- **Go DDD: Add Bounded Context** (command palette and explorer context menu):
+  asks for the module name and, optionally, the aggregate type, then runs
+  `scaffold add module`. It finds the project root by walking up to
+  `cmd/modules.go`. Needs CLI v1.0.0 or later.
+
 ## [0.2.0]
 
 ### Added

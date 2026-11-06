@@ -1,0 +1,165 @@
+// Package archtest turns the DDD dependency rule into a failing test, so it is
+// checked by `go test ./...` in CI instead of by code review. Dependencies point
+// inwards: transport -> application -> domain <- infrastructure.
+//
+// The domain imports the standard library and other domain packages only: no
+// framework, no database, no other layer. The application imports no
+// infrastructure, no transport, and neither GORM nor Fiber: it reaches the
+// outside world through the domain's ports. Test files are exempt, since a test
+// may wire real adapters.
+package archtest
+
+import (
+	"fmt"
+	"go/parser"
+	"go/token"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"testing"
+)
+
+const modulePath = "{{.ProjectPath}}"
+
+// internalDir is internal/, seen from this package's directory.
+const internalDir = ".."
+
+func TestDependencyRule(t *testing.T) {
+	contexts, err := os.ReadDir(internalDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checked := 0
+	for _, c := range contexts {
+		if !c.IsDir() || c.Name() == "archtest" {
+			continue
+		}
+		for _, layer := range []string{"domain", "application"} {
+			dir := filepath.Join(internalDir, c.Name(), layer)
+			if _, err := os.Stat(dir); err != nil {
+				continue
+			}
+			checked++
+			bad, err := violations(dir, layer)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, v := range bad {
+				t.Errorf("internal/%s/%s", c.Name(), v)
+			}
+		}
+	}
+	if checked == 0 {
+		t.Log("no internal/<context>/domain or application package yet: nothing to check")
+	}
+}
+
+// violations lists the forbidden imports of the non-test Go files under dir,
+// which holds the given layer.
+func violations(dir, layer string) ([]string, error) {
+	var out []string
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return err
+		}
+		f, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ImportsOnly)
+		if err != nil {
+			return err
+		}
+		for _, imp := range f.Imports {
+			p, _ := strconv.Unquote(imp.Path.Value)
+			if reason := forbidden(layer, p); reason != "" {
+				rel, _ := filepath.Rel(dir, path)
+				out = append(out, fmt.Sprintf("%s/%s imports %s: %s", layer, filepath.ToSlash(rel), p, reason))
+			}
+		}
+		return nil
+	})
+	return out, err
+}
+
+// forbidden returns why layer may not import p, or "" when it may.
+func forbidden(layer, p string) string {
+	own := strings.HasPrefix(p, modulePath+"/")
+	switch layer {
+	case "domain":
+		if own && isLayer(p, "domain") {
+			return ""
+		}
+		if own {
+			return "the domain depends on nothing but other domains"
+		}
+		if !isStdlib(p) {
+			return "the domain stays free of third-party code"
+		}
+	case "application":
+		if own && (isLayer(p, "infrastructure") || isLayer(p, "transport")) {
+			return "use cases reach adapters only through domain ports"
+		}
+		if strings.HasPrefix(p, "gorm.io/") || strings.HasPrefix(p, "github.com/gofiber/") {
+			return "use cases know neither the database nor HTTP"
+		}
+	}
+	return ""
+}
+
+// isLayer reports whether import path p is inside internal/<context>/<layer>.
+func isLayer(p, layer string) bool {
+	rest := strings.TrimPrefix(p, modulePath+"/internal/")
+	parts := strings.Split(rest, "/")
+	return rest != p && len(parts) >= 2 && parts[1] == layer
+}
+
+// isStdlib reports whether p is a standard library path: its first element
+// has no dot (third-party paths start with a host).
+func isStdlib(p string) bool {
+	first, _, _ := strings.Cut(p, "/")
+	return !strings.Contains(first, ".")
+}
+
+// The checker itself is tested, or a typo in it would make the rule pass
+// vacuously.
+func TestForbiddenCatchesViolations(t *testing.T) {
+	for _, tc := range []struct {
+		layer, path string
+		bad         bool
+	}{
+		{"domain", "time", false},
+		{"domain", modulePath + "/internal/billing/domain", false},
+		{"domain", "gorm.io/gorm", true},
+		{"domain", "github.com/gofiber/fiber/v2", true},
+		{"domain", modulePath + "/internal/billing/infrastructure", true},
+		{"domain", modulePath + "/env", true},
+		{"application", modulePath + "/internal/billing/domain", false},
+		{"application", "go.uber.org/zap", false},
+		{"application", modulePath + "/internal/billing/infrastructure", true},
+		{"application", modulePath + "/internal/billing/transport/http", true},
+		{"application", "gorm.io/gorm", true},
+	} {
+		if got := forbidden(tc.layer, tc.path) != ""; got != tc.bad {
+			t.Errorf("forbidden(%s, %s) = %v, want %v", tc.layer, tc.path, got, tc.bad)
+		}
+	}
+}
+
+func TestViolationsReadsTheFiles(t *testing.T) {
+	dir := t.TempDir()
+	src := "package domain\n\nimport \"gorm.io/gorm\"\n\nvar _ gorm.DB\n"
+	if err := os.WriteFile(filepath.Join(dir, "bad.go"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Test files may import anything.
+	if err := os.WriteFile(filepath.Join(dir, "bad_test.go"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := violations(dir, "domain")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || !strings.Contains(got[0], "bad.go imports gorm.io/gorm") {
+		t.Errorf("violations = %q, want exactly the one in bad.go", got)
+	}
+}

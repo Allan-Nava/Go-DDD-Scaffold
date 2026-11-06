@@ -1,0 +1,77 @@
+package domain
+
+import (
+	"errors"
+	"strings"
+	"testing"
+	"time"
+)
+
+// The domain is tested on its own: no database, no HTTP, no mocks.
+
+var now = time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+
+func mustName(t *testing.T, raw string) Name {
+	t.Helper()
+	n, err := NewName(raw)
+	if err != nil {
+		t.Fatalf("NewName(%q): %v", raw, err)
+	}
+	return n
+}
+
+func TestNewNameValidates(t *testing.T) {
+	for _, raw := range []string{"", "   ", strings.Repeat("x", maxNameLen+1)} {
+		if _, err := NewName(raw); !errors.Is(err, ErrInvalidName) {
+			t.Errorf("NewName(%q) error = %v, want ErrInvalidName", raw, err)
+		}
+	}
+	if got := mustName(t, "  spaced  ").String(); got != "spaced" {
+		t.Errorf("NewName trims: got %q", got)
+	}
+}
+
+func TestANew{{.Entity}}IsActive(t *testing.T) {
+	e := New{{.Entity}}("id-1", mustName(t, "first"), now)
+
+	if e.Status() != StatusActive {
+		t.Errorf("status = %q, want %q", e.Status(), StatusActive)
+	}
+	if !e.CreatedAt().Equal(now) || !e.UpdatedAt().Equal(now) {
+		t.Errorf("timestamps = %v / %v, want %v", e.CreatedAt(), e.UpdatedAt(), now)
+	}
+}
+
+func TestAnArchived{{.Entity}}IsReadOnly(t *testing.T) {
+	e := New{{.Entity}}("id-1", mustName(t, "first"), now)
+	later := now.Add(time.Hour)
+
+	if err := e.Archive(later); err != nil {
+		t.Fatalf("Archive: %v", err)
+	}
+	if e.Status() != StatusArchived || !e.UpdatedAt().Equal(later) {
+		t.Errorf("after Archive: status %q, updatedAt %v", e.Status(), e.UpdatedAt())
+	}
+	if err := e.Archive(later); !errors.Is(err, ErrAlreadyArchived) {
+		t.Errorf("second Archive error = %v, want ErrAlreadyArchived", err)
+	}
+	if err := e.Rename(mustName(t, "second"), later); !errors.Is(err, ErrAlreadyArchived) {
+		t.Errorf("Rename after Archive error = %v, want ErrAlreadyArchived", err)
+	}
+	if e.Name().String() != "first" {
+		t.Errorf("name changed to %q on a rejected Rename", e.Name())
+	}
+}
+
+func TestRehydrateRejectsCorruptRows(t *testing.T) {
+	if _, err := Rehydrate{{.Entity}}("id-1", "", "active", now, now); err == nil {
+		t.Error("empty name accepted")
+	}
+	if _, err := Rehydrate{{.Entity}}("id-1", "ok", "deleted", now, now); err == nil {
+		t.Error("unknown status accepted")
+	}
+	e, err := Rehydrate{{.Entity}}("id-1", "ok", "archived", now, now)
+	if err != nil || e.Status() != StatusArchived {
+		t.Errorf("valid row: %v, status %v", err, e)
+	}
+}

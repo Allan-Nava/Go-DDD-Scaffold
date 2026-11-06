@@ -12,7 +12,7 @@
   },
   "homepage": "https://github.com/Allan-Nava/Go-DDD-Scaffold/tree/main/extensions/vscode",
   "publisher": "allannava95",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -34,7 +34,7 @@
         "goDddScaffold.binaryPath": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Path to the `scaffold` CLI. Leave empty to look it up on the `PATH` and then in the Go bin directories (`$GOBIN`, `$GOPATH/bin`, `~/go/bin`) \u2014 needed because a GUI editor does not read the shell profile. Install the CLI with `go install github.com/Allan-Nava/Go-DDD-Scaffold@latest`."
+          "markdownDescription": "Path to the `scaffold` CLI. Leave empty to look it up on the `PATH` and then in the Go bin directories (`$GOBIN`, `$GOPATH/bin`, `~/go/bin`) — needed because a GUI editor does not read the shell profile. Install the CLI with `go install github.com/Allan-Nava/Go-DDD-Scaffold@latest`."
         }
       }
     },
@@ -43,6 +43,11 @@
         "command": "go-ddd-scaffold.init",
         "title": "New Scaffold Project",
         "category": "Go DDD"
+      },
+      {
+        "command": "go-ddd-scaffold.addModule",
+        "title": "Add Bounded Context",
+        "category": "Go DDD"
       }
     ],
     "menus": {
@@ -50,6 +55,11 @@
         {
           "command": "go-ddd-scaffold.init",
           "group": "scaffoldGroup@1",
+          "when": "explorerResourceIsFolder"
+        },
+        {
+          "command": "go-ddd-scaffold.addModule",
+          "group": "scaffoldGroup@2",
           "when": "explorerResourceIsFolder"
         }
       ]

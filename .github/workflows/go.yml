@@ -121,6 +121,9 @@ jobs:
           mkdir -p /tmp/gen/github.com/acme/myservice
           cd /tmp/gen/github.com/acme/myservice
           /tmp/scaffold init
+          # A second bounded context, with a multi-word entity: names of a
+          # different length are what breaks gofmt alignment in a template.
+          /tmp/scaffold add module --entity InvoiceLine billing
 
       - name: Compile what was generated
         working-directory: /tmp/gen/github.com/acme/myservice
@@ -150,5 +153,9 @@ jobs:
             sleep 1
           done
           curl -fsS --max-time 5 -o /dev/null -w 'health: HTTP %{http_code}\n' http://127.0.0.1:18080/health
+          # Both modules are mounted and work without a database (memory fallback).
+          curl -fsS --max-time 5 -H 'Content-Type: application/json' -d '{"name":"ci"}' http://127.0.0.1:18080/api/catalog
+          echo
+          curl -fsS --max-time 5 -o /dev/null -w 'GET /api/billing: HTTP %{http_code}\n' http://127.0.0.1:18080/api/billing
           kill -TERM $pid
           wait $pid || true

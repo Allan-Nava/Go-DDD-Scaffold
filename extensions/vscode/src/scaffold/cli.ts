@@ -268,6 +268,42 @@ export async function locateBinary(
 	throw new BinaryNotFoundError(candidates);
 }
 
+/** MODULE_NAME is what `scaffold add module` accepts: it becomes a folder under
+ * internal/, a route under /api and a table prefix. */
+export const MODULE_NAME = /^[a-z][a-z0-9]*$/;
+/** ENTITY_NAME is an exported Go identifier, the aggregate's type name. */
+export const ENTITY_NAME = /^[A-Z][A-Za-z0-9]*$/;
+
+/** buildAddModuleArgs assembles the argv for `scaffold add module`. Flags come
+ * before the name: urfave/cli stops parsing flags at the first argument. */
+export function buildAddModuleArgs(
+	projectDir: string,
+	name: string,
+	options: { entity?: string; force?: boolean } = {},
+): string[] {
+	const args = ["add", "module", "--dir", projectDir];
+	const entity = options.entity?.trim();
+	if (entity) {
+		args.push("--entity", entity);
+	}
+	if (options.force) {
+		args.push("--force");
+	}
+	args.push(name.trim());
+	return args;
+}
+
+/** runAddModule adds a bounded context to the project in projectDir. */
+export async function runAddModule(
+	command: string,
+	projectDir: string,
+	name: string,
+	options: { entity?: string; force?: boolean } = {},
+	exec: Exec = defaultExec,
+): Promise<{ result: GenerationResult; output: string }> {
+	return runCli(command, buildAddModuleArgs(projectDir, name, options), exec);
+}
+
 /** runInit generates a project into targetDir and reports what changed. */
 export async function runInit(
 	command: string,
@@ -275,8 +311,14 @@ export async function runInit(
 	options: InitOptions = {},
 	exec: Exec = defaultExec,
 ): Promise<{ result: GenerationResult; output: string }> {
-	const args = buildInitArgs(targetDir, options);
+	return runCli(command, buildInitArgs(targetDir, options), exec);
+}
 
+async function runCli(
+	command: string,
+	args: string[],
+	exec: Exec,
+): Promise<{ result: GenerationResult; output: string }> {
 	let output: string;
 	try {
 		output = await exec(command, args, GENERATE_TIMEOUT_MS);

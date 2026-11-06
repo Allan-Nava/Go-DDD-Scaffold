@@ -1,0 +1,84 @@
+package infrastructure
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"{{.ProjectPath}}/internal/{{.Module}}/domain"
+)
+
+// The GORM store needs MySQL; what can break without one — the mapping between
+// the aggregate and its row — is tested here, together with the in-memory store.
+
+var (
+	_ domain.Repository = (*MemoryStore)(nil)
+	_ domain.Repository = (*GormStore)(nil)
+)
+
+func newAggregate(t *testing.T, id, name string, at time.Time) *domain.{{.Entity}} {
+	t.Helper()
+	n, err := domain.NewName(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return domain.New{{.Entity}}(domain.ID(id), n, at)
+}
+
+func TestRecordRoundTrip(t *testing.T) {
+	at := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	e := newAggregate(t, "id-1", "first", at)
+	if err := e.Archive(at.Add(time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+
+	back, err := toRecord(e).toDomain()
+	if err != nil {
+		t.Fatalf("toDomain: %v", err)
+	}
+	if back.ID() != e.ID() || back.Name() != e.Name() || back.Status() != e.Status() ||
+		!back.CreatedAt().Equal(e.CreatedAt()) || !back.UpdatedAt().Equal(e.UpdatedAt()) {
+		t.Errorf("round trip changed the aggregate: %+v -> %+v", toRecord(e), toRecord(back))
+	}
+}
+
+func TestMemoryStoreSavesACopy(t *testing.T) {
+	ctx := context.Background()
+	s := NewMemoryStore()
+	at := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	e := newAggregate(t, "id-1", "first", at)
+	if err := s.Save(ctx, e); err != nil {
+		t.Fatal(err)
+	}
+
+	// Changing the aggregate without Save must not reach the store.
+	_ = e.Archive(at)
+	got, err := s.ByID(ctx, "id-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status() != domain.StatusActive {
+		t.Errorf("stored status = %q: the store kept a pointer, not a copy", got.Status())
+	}
+
+	if _, err := s.ByID(ctx, "missing"); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("missing id error = %v, want ErrNotFound", err)
+	}
+}
+
+func TestMemoryStoreListsOldestFirst(t *testing.T) {
+	ctx := context.Background()
+	s := NewMemoryStore()
+	at := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	_ = s.Save(ctx, newAggregate(t, "b", "second", at.Add(time.Second)))
+	_ = s.Save(ctx, newAggregate(t, "a", "first", at))
+
+	list, err := s.List(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 2 || list[0].ID() != "a" || list[1].ID() != "b" {
+		t.Errorf("List order = %v", list)
+	}
+}

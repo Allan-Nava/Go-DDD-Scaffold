@@ -1,0 +1,89 @@
+// Package application holds the {{.Module}} use cases. Each method loads an
+// aggregate through the repository port, asks it to change, and saves it: the
+// rules stay in the domain, the orchestration here. It depends on domain only
+// (internal/archtest enforces it), never on the database or HTTP.
+package application
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"time"
+
+	"{{.ProjectPath}}/internal/{{.Module}}/domain"
+)
+
+// Service runs the {{.Module}} use cases.
+type Service struct {
+	repo  domain.Repository
+	now   func() time.Time
+	newID func() domain.ID
+}
+
+// NewService returns a Service backed by repo.
+func NewService(repo domain.Repository) *Service {
+	return &Service{repo: repo, now: time.Now, newID: randomID}
+}
+
+// Create registers a new {{.Entity}}.
+func (s *Service) Create(ctx context.Context, name string) (*domain.{{.Entity}}, error) {
+	n, err := domain.NewName(name)
+	if err != nil {
+		return nil, err
+	}
+	e := domain.New{{.Entity}}(s.newID(), n, s.now().UTC())
+	if err := s.repo.Save(ctx, e); err != nil {
+		return nil, err
+	}
+	return e, nil
+}
+
+// Get returns one {{.Entity}}, or domain.ErrNotFound.
+func (s *Service) Get(ctx context.Context, id string) (*domain.{{.Entity}}, error) {
+	return s.repo.ByID(ctx, domain.ID(id))
+}
+
+// List returns every {{.Entity}}.
+func (s *Service) List(ctx context.Context) ([]*domain.{{.Entity}}, error) {
+	return s.repo.List(ctx)
+}
+
+// Rename changes the name of a {{.Entity}}.
+func (s *Service) Rename(ctx context.Context, id, name string) (*domain.{{.Entity}}, error) {
+	n, err := domain.NewName(name)
+	if err != nil {
+		return nil, err
+	}
+	return s.change(ctx, id, func(e *domain.{{.Entity}}, now time.Time) error {
+		return e.Rename(n, now)
+	})
+}
+
+// Archive archives a {{.Entity}}.
+func (s *Service) Archive(ctx context.Context, id string) (*domain.{{.Entity}}, error) {
+	return s.change(ctx, id, func(e *domain.{{.Entity}}, now time.Time) error {
+		return e.Archive(now)
+	})
+}
+
+// change is the load → mutate → save cycle every command shares.
+func (s *Service) change(ctx context.Context, id string, mutate func(*domain.{{.Entity}}, time.Time) error) (*domain.{{.Entity}}, error) {
+	e, err := s.repo.ByID(ctx, domain.ID(id))
+	if err != nil {
+		return nil, err
+	}
+	if err := mutate(e, s.now().UTC()); err != nil {
+		return nil, err
+	}
+	if err := s.repo.Save(ctx, e); err != nil {
+		return nil, err
+	}
+	return e, nil
+}
+
+// randomID returns 128 random bits, hex-encoded.
+func randomID() domain.ID {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b) // does not fail on supported platforms; since Go 1.24 it panics instead
+	return domain.ID(hex.EncodeToString(b))
+}

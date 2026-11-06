@@ -10,13 +10,17 @@ import {
 	GenerationError,
 	OutdatedBinaryError,
 	binaryCandidates,
+	buildAddModuleArgs,
 	buildInitArgs,
+	ENTITY_NAME,
+	MODULE_NAME,
 	goBinDirs,
 	isOurCli,
 	locateBinary,
 	supportsModernInit,
 	parseGenerationOutput,
 	parseVersion,
+	runAddModule,
 	runInit,
 } from "./cli";
 
@@ -255,4 +259,32 @@ test("runInit wraps a failing CLI in a GenerationError that keeps the output", a
 			return true;
 		},
 	);
+});
+
+test("buildAddModuleArgs puts every flag before the module name", () => {
+	assert.deepEqual(buildAddModuleArgs("/p", "billing"), [
+		"add", "module", "--dir", "/p", "billing",
+	]);
+	assert.deepEqual(
+		buildAddModuleArgs("/p", " billing ", { entity: "Invoice", force: true }),
+		["add", "module", "--dir", "/p", "--entity", "Invoice", "--force", "billing"],
+	);
+});
+
+test("module and entity names follow the CLI's rules", () => {
+	assert.ok(MODULE_NAME.test("billing2"));
+	for (const bad of ["Billing", "bill-ing", "2billing", ""]) {
+		assert.ok(!MODULE_NAME.test(bad), bad);
+	}
+	assert.ok(ENTITY_NAME.test("InvoiceLine"));
+	assert.ok(!ENTITY_NAME.test("invoice"));
+});
+
+test("runAddModule parses the CLI output", async () => {
+	const exec: Exec = async (_file, args) => {
+		assert.deepEqual(args.slice(0, 2), ["add", "module"]);
+		return "Create internal/billing/domain/model.go\nCreate cmd/module_billing.go\n";
+	};
+	const { result } = await runAddModule("scaffold", "/p", "billing", {}, exec);
+	assert.deepEqual(result.created, ["internal/billing/domain/model.go", "cmd/module_billing.go"]);
 });

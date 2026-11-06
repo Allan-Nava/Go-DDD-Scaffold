@@ -1,0 +1,125 @@
+// Package httptransport exposes the {{.Module}} use cases over HTTP. It
+// translates requests into use-case calls and domain errors into status codes;
+// it holds no business rule.
+package httptransport
+
+import (
+	"errors"
+	"time"
+
+	"github.com/gofiber/fiber/v2"
+	"go.uber.org/zap"
+
+	"{{.ProjectPath}}/internal/{{.Module}}/application"
+	"{{.ProjectPath}}/internal/{{.Module}}/domain"
+)
+
+// Handler serves the {{.Module}} routes.
+type Handler struct {
+	svc *application.Service
+	log *zap.SugaredLogger
+}
+
+// NewHandler returns a Handler for svc.
+func NewHandler(svc *application.Service, log *zap.SugaredLogger) *Handler {
+	return &Handler{svc: svc, log: log}
+}
+
+// Register mounts the routes on r (the composition root picks the prefix).
+func (h *Handler) Register(r fiber.Router) {
+	r.Post("/", h.create)
+	r.Get("/", h.list)
+	r.Get("/:id", h.get)
+	r.Patch("/:id", h.rename)
+	r.Post("/:id/archive", h.archive)
+}
+
+type nameRequest struct {
+	Name string `json:"name"`
+}
+
+type response struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func toResponse(e *domain.{{.Entity}}) response {
+	return response{
+		ID:        string(e.ID()),
+		Name:      e.Name().String(),
+		Status:    string(e.Status()),
+		CreatedAt: e.CreatedAt(),
+		UpdatedAt: e.UpdatedAt(),
+	}
+}
+
+func (h *Handler) create(c *fiber.Ctx) error {
+	var req nameRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "the body must be JSON: {\"name\": \"...\"}")
+	}
+	e, err := h.svc.Create(c.UserContext(), req.Name)
+	if err != nil {
+		return h.fail(err)
+	}
+	return c.Status(fiber.StatusCreated).JSON(toResponse(e))
+}
+
+func (h *Handler) list(c *fiber.Ctx) error {
+	all, err := h.svc.List(c.UserContext())
+	if err != nil {
+		return h.fail(err)
+	}
+	out := make([]response, 0, len(all))
+	for _, e := range all {
+		out = append(out, toResponse(e))
+	}
+	return c.JSON(out)
+}
+
+func (h *Handler) get(c *fiber.Ctx) error {
+	e, err := h.svc.Get(c.UserContext(), c.Params("id"))
+	if err != nil {
+		return h.fail(err)
+	}
+	return c.JSON(toResponse(e))
+}
+
+func (h *Handler) rename(c *fiber.Ctx) error {
+	var req nameRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "the body must be JSON: {\"name\": \"...\"}")
+	}
+	e, err := h.svc.Rename(c.UserContext(), c.Params("id"), req.Name)
+	if err != nil {
+		return h.fail(err)
+	}
+	return c.JSON(toResponse(e))
+}
+
+func (h *Handler) archive(c *fiber.Ctx) error {
+	e, err := h.svc.Archive(c.UserContext(), c.Params("id"))
+	if err != nil {
+		return h.fail(err)
+	}
+	return c.JSON(toResponse(e))
+}
+
+// fail maps domain errors to status codes. Anything else is a 500 whose detail
+// goes to the log, never to the client.
+func (h *Handler) fail(err error) error {
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		return fiber.NewError(fiber.StatusNotFound, err.Error())
+	case errors.Is(err, domain.ErrInvalidName):
+		return fiber.NewError(fiber.StatusUnprocessableEntity, err.Error())
+	case errors.Is(err, domain.ErrAlreadyArchived):
+		return fiber.NewError(fiber.StatusConflict, err.Error())
+	default:
+		h.log.Errorw("{{.Module}} request failed", "err", err)
+		return fiber.ErrInternalServerError
+	}
+}

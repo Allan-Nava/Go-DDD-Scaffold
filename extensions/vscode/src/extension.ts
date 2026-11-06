@@ -7,6 +7,7 @@
 // path. With the CLI as the single implementation, that class of bug is gone.
 import * as vscode from "vscode";
 
+import { addBoundedContext } from "./commands/addModule";
 import { newScaffoldProject } from "./commands/init";
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -19,6 +20,10 @@ export function activate(context: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand(
 			"go-ddd-scaffold.init",
 			(uri?: vscode.Uri) => newScaffoldProject(output, uri),
+		),
+		vscode.commands.registerCommand(
+			"go-ddd-scaffold.addModule",
+			(uri?: vscode.Uri) => addBoundedContext(output, uri),
 		),
 	);
 }

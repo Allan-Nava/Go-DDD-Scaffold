@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"go.uber.org/zap"
 )
 
 // TestHealthEndpoint drives the router through app.Test, so it needs no port and
@@ -71,5 +73,26 @@ func TestCORSAllowsOnlyTheConfiguredOrigins(t *testing.T) {
 	}
 	if got := preflight(t, allowed, "https://evil.example").Header.Get("Access-Control-Allow-Origin"); got != "" {
 		t.Errorf("other origin: Access-Control-Allow-Origin = %q, want none", got)
+	}
+}
+
+// Every registered module must mount without a database (the in-memory
+// fallback) and answer its list route: this catches a module whose wiring
+// file compiles but fails at startup.
+func TestModulesMountWithoutADatabase(t *testing.T) {
+	app := newApp("{{.ProjectName}}-test", nil)
+	if err := mountModules(app.Group("/api"), deps{log: zap.NewNop().Sugar()}); err != nil {
+		t.Fatalf("mountModules: %v", err)
+	}
+
+	for _, m := range modules {
+		res, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/"+m.name, nil))
+		if err != nil {
+			t.Fatalf("GET /api/%s: %v", m.name, err)
+		}
+		res.Body.Close()
+		if res.StatusCode != http.StatusOK {
+			t.Errorf("GET /api/%s = %d, want %d", m.name, res.StatusCode, http.StatusOK)
+		}
 	}
 }

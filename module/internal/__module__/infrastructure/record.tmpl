@@ -1,0 +1,38 @@
+// Package infrastructure implements the {{.Module}} repository port: a GORM
+// store for MySQL and an in-memory store for running without a database and
+// for tests. The domain never sees GORM: the mapping happens here.
+package infrastructure
+
+import (
+	"time"
+
+	"{{.ProjectPath}}/internal/{{.Module}}/domain"
+)
+
+// record is the persisted shape of a {{.Entity}}. It is separate from the
+// aggregate on purpose: the column tags and the schema can change without
+// touching the domain.
+type record struct {
+	ID        string `gorm:"primaryKey;size:32"`
+	Name      string `gorm:"size:100;not null"`
+	Status    string `gorm:"size:16;not null;index"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// TableName pins the table, so renaming the Go type never renames the table.
+func (record) TableName() string { return "{{.Table}}" }
+
+func toRecord(e *domain.{{.Entity}}) record {
+	return record{
+		ID:        string(e.ID()),
+		Name:      e.Name().String(),
+		Status:    string(e.Status()),
+		CreatedAt: e.CreatedAt(),
+		UpdatedAt: e.UpdatedAt(),
+	}
+}
+
+func (r record) toDomain() (*domain.{{.Entity}}, error) {
+	return domain.Rehydrate{{.Entity}}(r.ID, r.Name, r.Status, r.CreatedAt, r.UpdatedAt)
+}

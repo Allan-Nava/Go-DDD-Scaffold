@@ -193,3 +193,61 @@ func checkModule(mod string, inferred bool) error {
 	}
 	return nil
 }
+
+// ModuleSpec names a bounded context to generate.
+type ModuleSpec struct {
+	// Name is the folder under internal/, the route under /api and the table
+	// prefix: lowercase letters and digits, starting with a letter ("billing").
+	Name string
+	// Entity is the aggregate's type name ("Invoice"). Empty means Name with an
+	// upper-case first letter.
+	Entity string
+}
+
+// DefaultExample is the bounded context `scaffold init` generates.
+var DefaultExample = ModuleSpec{Name: "catalog", Entity: "Product"}
+
+var (
+	validModule = regexp.MustCompile(`^[a-z][a-z0-9]*$`)
+	validEntity = regexp.MustCompile(`^[A-Z][A-Za-z0-9]*$`)
+)
+
+// reservedModules would collide with what the project already has under
+// internal/ or with the Go toolchain's special directory names.
+var reservedModules = map[string]bool{"archtest": true, "internal": true, "vendor": true, "testdata": true}
+
+// moduleData validates spec and returns base completed with the module fields.
+func moduleData(base data, spec ModuleSpec) (data, error) {
+	name := spec.Name
+	if !validModule.MatchString(name) || reservedModules[name] {
+		return data{}, fmt.Errorf("invalid module name %q: lowercase letters and digits, starting with a letter (e.g. billing), and not archtest/internal/vendor/testdata", name)
+	}
+	title := strings.ToUpper(name[:1]) + name[1:]
+
+	entity := spec.Entity
+	if entity == "" {
+		entity = title
+	}
+	if !validEntity.MatchString(entity) {
+		return data{}, fmt.Errorf("invalid entity name %q: an exported Go identifier in CamelCase (e.g. Invoice)", entity)
+	}
+
+	base.Module = name
+	base.ModuleTitle = title
+	base.Entity = entity
+	base.EntityVar = strings.ToLower(snake(entity, ' '))
+	base.Table = name + "_" + strings.ToLower(snake(entity, '_'))
+	return base, nil
+}
+
+// snake splits a CamelCase identifier with sep: "InvoiceLine" -> "Invoice_Line".
+func snake(s string, sep rune) string {
+	var b strings.Builder
+	for i, r := range s {
+		if i > 0 && r >= 'A' && r <= 'Z' {
+			b.WriteRune(sep)
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}

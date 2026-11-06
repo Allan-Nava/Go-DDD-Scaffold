@@ -31,19 +31,46 @@ func generateFromEmbeddedAssets(t *testing.T) (dest string, res scaffold.Result)
 	require.NoError(t, err)
 
 	res, err = scaffold.New(scaffold.Options{
-		Templates: templates,
-		Static:    static,
-		Log:       io.Discard,
+		Templates:       templates,
+		Static:          static,
+		ModuleTemplates: embeddedModules(t),
+		Log:             io.Discard,
 	}).Generate(dest)
 	require.NoError(t, err)
 
 	return dest, res
 }
 
+func embeddedModules(t *testing.T) fs.FS {
+	t.Helper()
+	modules, err := fs.Sub(moduleAssets, "module")
+	require.NoError(t, err)
+	return modules
+}
+
+// moduleFiles is what one bounded context adds: four layers, their tests and
+// its wiring file.
+func moduleFiles(name string) []string {
+	return []string{
+		"cmd/module_" + name + ".go",
+		"internal/" + name + "/domain/model.go",
+		"internal/" + name + "/domain/model_test.go",
+		"internal/" + name + "/domain/repository.go",
+		"internal/" + name + "/application/service.go",
+		"internal/" + name + "/application/service_test.go",
+		"internal/" + name + "/infrastructure/gorm.go",
+		"internal/" + name + "/infrastructure/memory.go",
+		"internal/" + name + "/infrastructure/record.go",
+		"internal/" + name + "/infrastructure/store_test.go",
+		"internal/" + name + "/transport/http/handler.go",
+		"internal/" + name + "/transport/http/handler_test.go",
+	}
+}
+
 func TestEmbeddedAssetsProduceTheDocumentedLayout(t *testing.T) {
 	_, res := generateFromEmbeddedAssets(t)
 
-	assert.ElementsMatch(t, []string{
+	assert.ElementsMatch(t, append([]string{
 		".dockerignore",
 		".gitignore",
 		"Dockerfile",
@@ -58,13 +85,44 @@ func TestEmbeddedAssetsProduceTheDocumentedLayout(t *testing.T) {
 		"env/env.go",
 		"env/env_test.go",
 		"go.mod",
-	}, res.Created)
+		"cmd/modules.go",
+		"internal/archtest/arch_test.go",
+	}, moduleFiles("catalog")...), res.Created)
+}
+
+func TestAddModuleWithTheEmbeddedAssets(t *testing.T) {
+	dest, _ := generateFromEmbeddedAssets(t)
+	add := scaffold.New(scaffold.Options{ModuleTemplates: embeddedModules(t), Log: io.Discard})
+
+	res, err := add.AddModule(dest, scaffold.ModuleSpec{Name: "billing", Entity: "InvoiceLine"})
+	require.NoError(t, err)
+	assert.ElementsMatch(t, moduleFiles("billing"), res.Created)
+
+	model, err := os.ReadFile(filepath.Join(dest, "internal", "billing", "domain", "model.go"))
+	require.NoError(t, err)
+	assert.Contains(t, string(model), "type InvoiceLine struct")
+	assert.Contains(t, string(model), `errors.New("invoice line not found")`)
+	gorm, err := os.ReadFile(filepath.Join(dest, "internal", "billing", "infrastructure", "record.go"))
+	require.NoError(t, err)
+	assert.Contains(t, string(gorm), `return "billing_invoice_line"`)
+
+	// Idempotent like init: a second run skips everything.
+	again, err := add.AddModule(dest, scaffold.ModuleSpec{Name: "billing", Entity: "InvoiceLine"})
+	require.NoError(t, err)
+	assert.Empty(t, again.Created)
+	assert.Len(t, again.Skipped, len(res.Created))
 }
 
 // Every generated Go file must be valid, gofmt-clean source. This is the cheap
 // half of the gate; the CI job additionally runs `go build` on the result.
 func TestGeneratedGoFilesAreValidAndFormatted(t *testing.T) {
 	dest, res := generateFromEmbeddedAssets(t)
+	// A second module with a multi-word entity: names of different lengths are
+	// what breaks gofmt alignment in a template.
+	added, err := scaffold.New(scaffold.Options{ModuleTemplates: embeddedModules(t), Log: io.Discard}).
+		AddModule(dest, scaffold.ModuleSpec{Name: "billing", Entity: "InvoiceLine"})
+	require.NoError(t, err)
+	res.Created = append(res.Created, added.Created...)
 
 	var checked int
 	for _, rel := range res.Created {

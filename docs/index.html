@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Go-DDD-Scaffold — a Go service skeleton that compiles, runs and ships</title>
-<meta name="description" content="scaffold init writes a Go HTTP service with graceful shutdown, a health check, configuration from the environment, a non-root multi-stage image and docker compose. Every template is compiled in CI before it ships. One self-contained binary.">
+<meta name="description" content="scaffold init writes a Go HTTP service in DDD layers — domain, application, infrastructure, transport, with an architecture test — plus graceful shutdown, a health check, configuration from the environment, a non-root multi-stage image and docker compose. Every template is compiled in CI before it ships. One self-contained binary.">
 <meta name="author" content="Allan Nava">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#0b1120" media="(prefers-color-scheme: dark)">
@@ -15,17 +15,17 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Go-DDD-Scaffold">
 <meta property="og:title" content="Go-DDD-Scaffold — a Go service skeleton that compiles, runs and ships">
-<meta property="og:description" content="One command writes a Go HTTP service with graceful shutdown, health check, env configuration, a non-root image and docker compose. Every template is compiled in CI.">
+<meta property="og:description" content="One command writes a Go HTTP service in DDD layers, with an architecture test, graceful shutdown, health check, env configuration, a non-root image and docker compose. Every template is compiled in CI.">
 <meta property="og:url" content="https://allan-nava.github.io/Go-DDD-Scaffold/">
 <meta property="og:image" content="https://allan-nava.github.io/Go-DDD-Scaffold/assets/og-card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Go-DDD-Scaffold — a terminal running scaffold init, 14 files created">
+<meta property="og:image:alt" content="Go-DDD-Scaffold — a terminal running scaffold init, 28 files created">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Go-DDD-Scaffold — a Go service skeleton that compiles, runs and ships">
 <meta name="twitter:image" content="https://allan-nava.github.io/Go-DDD-Scaffold/assets/og-card.png">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Go-DDD-Scaffold","applicationCategory":"DeveloperApplication","operatingSystem":"Linux, macOS, Windows","description":"A CLI that generates a Go HTTP service skeleton: graceful shutdown, health check, configuration from the environment, GORM connection pool, a non-root multi-stage Docker image and docker compose, compiled in CI before every release.","url":"https://allan-nava.github.io/Go-DDD-Scaffold/","codeRepository":"https://github.com/Allan-Nava/Go-DDD-Scaffold","license":"https://opensource.org/licenses/MIT","author":{"@type":"Person","name":"Allan Nava","url":"https://github.com/Allan-Nava"},"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Go-DDD-Scaffold","applicationCategory":"DeveloperApplication","operatingSystem":"Linux, macOS, Windows","description":"A CLI that generates a Go HTTP service in Domain Driven Design layers (domain, application, infrastructure, transport) with an architecture test, adds bounded contexts with scaffold add module, and includes graceful shutdown, health check, configuration from the environment, GORM connection pool, a non-root multi-stage Docker image and docker compose, compiled in CI before every release.","url":"https://allan-nava.github.io/Go-DDD-Scaffold/","codeRepository":"https://github.com/Allan-Nava/Go-DDD-Scaffold","license":"https://opensource.org/licenses/MIT","author":{"@type":"Person","name":"Allan Nava","url":"https://github.com/Allan-Nava"},"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
 </script>
 <style>
 :root{--bg:#0b1120;--surface:#111c34;--code:#0d1626;--border:rgba(148,163,184,.16);--text:#dbe4f0;--muted:#93a4bd;--heading:#f1f5f9;--brand:#00add8;--link:#38bdf8;--ok:#34d399;--warn:#fbbf24;--bad:#f87171;--glow:radial-gradient(900px 420px at 12% -10%,rgba(0,173,216,.16),transparent 70%)}
@@ -73,13 +73,13 @@ footer{margin-top:64px;padding-top:20px;padding-bottom:40px;border-top:1px solid
 <header>
 <img src="assets/favicon.svg" alt="">
 <b>Go-DDD-Scaffold</b>
-<nav><a href="#layout">Layout</a><a href="#guarantees">Guarantees</a><a href="#roadmap">Roadmap</a><a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/releases">Releases</a><a href="https://github.com/Allan-Nava/Go-DDD-Scaffold">GitHub</a></nav>
+<nav><a href="#layout">Layout</a><a href="#ddd">DDD</a><a href="#guarantees">Guarantees</a><a href="#roadmap">Roadmap</a><a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/releases">Releases</a><a href="https://github.com/Allan-Nava/Go-DDD-Scaffold">GitHub</a></nav>
 </header>
 <main>
 <section class="hero">
 <div>
 <h1>A Go service that compiles, runs and ships — from one command.</h1>
-<p class="lede"><code>scaffold init</code> writes an HTTP service with graceful shutdown, a health check, configuration from the environment, a connection pool, a non-root multi-stage image and docker compose. Before every release CI generates a project and compiles it: a template that emits broken Go does not ship.</p>
+<p class="lede"><code>scaffold init</code> writes an HTTP service in DDD layers — a bounded context with its domain, use cases, adapters and an architecture test that enforces the dependency rule — with graceful shutdown, a health check, configuration from the environment, a connection pool, a non-root multi-stage image and docker compose. Before every release CI generates a project and compiles it: a template that emits broken Go does not ship.</p>
 <div class="install"><code>go install github.com/Allan-Nava/Go-DDD-Scaffold@latest</code><button type="button" onclick="navigator.clipboard&&navigator.clipboard.writeText('go install github.com/Allan-Nava/Go-DDD-Scaffold@latest');this.textContent='copied'">copy</button></div>
 <p class="links">The binary is named <code>Go-DDD-Scaffold</code> after the module — rename it to <code>scaffold</code>, or use <code>docker run --rm -v "$PWD:/work" ghcr.io/allan-nava/go-ddd-scaffold init</code>, or the <a href="https://marketplace.visualstudio.com/items?itemName=allannava95.go-ddd-scaffold">VS Code extension</a>. Templates are embedded: no <code>$GOPATH</code>, no checkout beside it.</p>
 </div>
@@ -89,31 +89,36 @@ footer{margin-top:64px;padding-top:20px;padding-bottom:40px;border-top:1px solid
 <pre><span class="d">$</span> mkdir -p ~/code/github.com/acme/orders &amp;&amp; cd $_
 <span class="d">$</span> scaffold init
 <span class="o">Create</span> Dockerfile
-<span class="o">Create</span> README.md
 <span class="o">Create</span> cmd/main.go
-<span class="o">Create</span> cmd/main_test.go
-<span class="o">Create</span> database/db.go
-<span class="o">Create</span> docker-compose.yml
-<span class="o">Create</span> env/.env.local
-<span class="o">Create</span> env/env.go
-<span class="o">Create</span> env/env_test.go
-<span class="o">Create</span> go.mod
-<span class="o">Create</span> .dockerignore
-<span class="o">Create</span> .gitignore
-<span class="o">Create</span> Makefile
-<span class="o">Create</span> config/config.yml
+<span class="o">Create</span> cmd/modules.go                       <span class="h"># composition root</span>
+<span class="o">Create</span> internal/archtest/arch_test.go       <span class="h"># the dependency rule, as a test</span>
+<span class="c">…</span>
+<span class="o">Create</span> cmd/module_catalog.go
+<span class="o">Create</span> internal/catalog/domain/model.go
+<span class="o">Create</span> internal/catalog/application/service.go
+<span class="o">Create</span> internal/catalog/infrastructure/gorm.go
+<span class="o">Create</span> internal/catalog/transport/http/handler.go
+<span class="c">…</span>
 
-14 file(s) created in ~/code/github.com/acme/orders  <span class="h"># module github.com/acme/orders, read from the path</span>
+28 file(s) created in ~/code/github.com/acme/orders  <span class="h"># module github.com/acme/orders, read from the path</span>
 
 <span class="d">$</span> go mod tidy &amp;&amp; go test ./...
-<span class="o">ok</span>  	github.com/acme/orders/cmd	0.004s
-<span class="o">ok</span>  	github.com/acme/orders/env	0.002s</pre>
-<p class="note">Real output of <code>v0.9.0</code>. Inside a git clone the module path comes from the <code>origin</code> remote instead; <code>--module</code> and <code>--name</code> override both. Run it again and every file is reported as <code>Skip</code>: nothing is overwritten without <code>--force</code>.</p>
+<span class="o">ok</span>  	github.com/acme/orders/cmd	0.007s
+<span class="o">ok</span>  	github.com/acme/orders/env	0.003s
+<span class="o">ok</span>  	github.com/acme/orders/internal/archtest	0.003s
+<span class="o">ok</span>  	github.com/acme/orders/internal/catalog/application	0.004s
+<span class="o">ok</span>  	github.com/acme/orders/internal/catalog/domain	0.003s
+<span class="o">ok</span>  	github.com/acme/orders/internal/catalog/infrastructure	0.004s
+<span class="o">ok</span>  	github.com/acme/orders/internal/catalog/transport/http	0.006s</pre>
+<p class="note">Real output of <code>v1.0.0</code>, abridged. <code>--no-example</code> skips the <code>catalog</code> module. Inside a git clone the module path comes from the <code>origin</code> remote instead; <code>--module</code> and <code>--name</code> override both. Run it again and every file is reported as <code>Skip</code>: nothing is overwritten without <code>--force</code>.</p>
 
 <h2 id="layout">What it generates</h2>
 <div class="wrap"><table>
 <thead><tr><th>File</th><th>What it does</th></tr></thead>
 <tbody>
+<tr><td><code>internal/catalog/</code></td><td>The example bounded context: a <code>Product</code> aggregate with a <code>Name</code> value object and an archive rule in <code>domain/</code>, use cases in <code>application/</code>, a GORM and an in-memory store in <code>infrastructure/</code>, REST handlers in <code>transport/http/</code>. Tests at every layer, none needing a database.</td></tr>
+<tr><td><code>cmd/modules.go</code>, <code>cmd/module_catalog.go</code></td><td>The composition root, by hand: each module wires store → service → handler and mounts under <code>/api/&lt;name&gt;</code>. With no database it falls back to the in-memory store.</td></tr>
+<tr><td><code>internal/archtest/</code></td><td>Parses the imports of every <code>domain</code> and <code>application</code> package and fails <code>go test</code> when one imports GORM, Fiber or an outer layer.</td></tr>
 <tr><td><code>cmd/main.go</code></td><td>Fiber router with recover and logger; CORS closed unless <code>CORS_ALLOWED_ORIGINS</code> lists origins; zap at <code>LOG_LEVEL</code>; <code>/health</code>; listens on <code>HTTP_ADDR</code>; on <code>SIGINT</code>/<code>SIGTERM</code> drains in-flight requests for up to 10 s.</td></tr>
 <tr><td><code>cmd/main_test.go</code></td><td>Drives the router through <code>app.Test</code>: no port to bind, no database — the smoke test to keep green while you add routes.</td></tr>
 <tr><td><code>env/env.go</code></td><td>Configuration from the environment (<code>caarlos0/env</code>), with <code>env/.env.&lt;APP_ENV&gt;</code> loaded when present; defaults pinned by <code>env_test.go</code>. <code>env/.env.local</code> leaves <code>DB_HOST</code> empty, so no database is needed to start.</td></tr>
@@ -128,8 +133,26 @@ footer{margin-top:64px;padding-top:20px;padding-bottom:40px;border-top:1px solid
 <span class="c">{"msg":"listening","addr":"0.0.0.0:8080"}</span>
 
 <span class="d">$</span> curl -s -o /dev/null -w '%{http_code}\n' localhost:8080/health
-<span class="o">200</span></pre>
+<span class="o">200</span>
+<span class="d">$</span> curl -s -X POST localhost:8080/api/catalog -H 'Content-Type: application/json' -d '{"name":"Laptop"}'
+<span class="c">{"id":"890916a0…","name":"Laptop","status":"active",…}</span>
+<span class="d">$</span> curl -s -X POST localhost:8080/api/catalog/890916a0…/archive   <span class="h"># twice</span>
+<span class="c">product is archived</span>                         <span class="h"># 409: the rule lives in the aggregate</span></pre>
 <p class="note"><code>make up</code> starts the service with MySQL through docker compose; set <code>DB_HOST=localhost</code> in <code>env/.env.local</code> to run on the host against it. CI starts the generated service exactly like <code>make run</code>, with <code>APP_ENV=local</code> and no database.</p>
+
+<h2 id="ddd">DDD, enforced</h2>
+<p>Dependencies point inwards — <code>transport → application → domain ← infrastructure</code> — and that is a test, not a convention:</p>
+<pre><span class="d">$</span> scaffold add module billing --entity Invoice   <span class="h"># four layers + tests + cmd/module_billing.go</span>
+<span class="o">Create</span> cmd/module_billing.go
+<span class="o">Create</span> internal/billing/domain/model.go
+<span class="c">…</span>
+12 file(s) created for module billing            <span class="h"># no existing file edited: the module registers itself</span>
+
+<span class="d">$</span> echo 'package domain; import _ "gorm.io/gorm"' &gt; internal/billing/domain/leak.go
+<span class="d">$</span> go test ./internal/archtest
+--- FAIL: TestDependencyRule
+    internal/billing/domain/leak.go imports gorm.io/gorm: the domain stays free of third-party code</pre>
+<p class="note">Where the rules go, rich versus anemic model, and when each fits: <a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/blob/main/docs/ddd-guide.md">the generated DDD layout</a>. Wiring is plain Go in <code>cmd/</code>: no DI framework.</p>
 
 <h2 id="guarantees">Guarantees, enforced in CI</h2>
 <div class="grid">
@@ -140,12 +163,12 @@ footer{margin-top:64px;padding-top:20px;padding-bottom:40px;border-top:1px solid
 </div>
 
 <h2 id="roadmap">Roadmap</h2>
-<p>The name promises a Domain Driven Design layout; today the generated project is the production-ready base a DDD service sits on. The <a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/blob/main/docs/audit-2026-11-06.md">product audit</a> lists what is missing and orders it:</p>
+<p>Since v1.0 the generated project has real DDD layers and <code>scaffold add module</code>; next comes what a service needs in production. The <a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/blob/main/docs/audit-2026-11-06.md">product audit</a> lists what is missing and orders it:</p>
 <div class="wrap"><table>
 <thead><tr><th>Milestone</th><th>What changes</th><th>Status</th></tr></thead>
 <tbody>
 <tr><td><a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/milestone/5">v0.9</a></td><td>The first five minutes work on every machine: <code>make run</code> without MySQL, module path with a dotted home directory, <code>--module</code> and <code>--name</code>, a generated <code>.gitignore</code>, CORS closed by default.</td><td class="tag">done</td></tr>
-<tr><td><a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/milestone/6">v1.0</a></td><td>Real DDD: one module per bounded context with <code>domain</code>, <code>application</code>, <code>infrastructure</code> and <code>transport</code>; a complete example module; <code>scaffold add module</code>; an architecture test that fails when the domain imports infrastructure.</td><td class="tag">open</td></tr>
+<tr><td><a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/milestone/6">v1.0</a></td><td>Real DDD: one module per bounded context with <code>domain</code>, <code>application</code>, <code>infrastructure</code> and <code>transport</code>; a complete example module; <code>scaffold add module</code>; an architecture test that fails when the domain imports infrastructure.</td><td class="tag">done</td></tr>
 <tr><td><a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/milestone/7">v1.1</a></td><td>Production: <code>/livez</code> and <code>/readyz</code>, Prometheus metrics, request id, migrations, a CI for the generated project, a supported Go toolchain.</td><td class="tag">open</td></tr>
 <tr><td><a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/milestone/8">v1.2</a></td><td>Choices: <code>--http std</code>, <code>--db postgres|none</code>, <code>--dry-run</code>.</td><td class="tag">open</td></tr>
 <tr><td><a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/milestone/9">Distribution</a></td><td>A binary named <code>scaffold</code>, GoReleaser with checksums and Homebrew, golden tests of the generated tree.</td><td class="tag">open</td></tr>
@@ -153,12 +176,13 @@ footer{margin-top:64px;padding-top:20px;padding-bottom:40px;border-top:1px solid
 <p class="note">Each milestone links to its GitHub issues; the plan itself lives in <a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/blob/main/docs/backlog.md">docs/backlog.md</a>.</p>
 
 <h2>In VS Code</h2>
-<p>The <a href="https://marketplace.visualstudio.com/items?itemName=allannava95.go-ddd-scaffold">extension</a> runs the same CLI on the folder you pick — it carries no templates of its own, so the editor and the terminal always generate the same project.</p>
+<p>The <a href="https://marketplace.visualstudio.com/items?itemName=allannava95.go-ddd-scaffold">extension</a> runs the same CLI: <em>New Scaffold Project</em> on the folder you pick, <em>Add Bounded Context</em> inside a generated project. It carries no templates of its own, so the editor and the terminal always generate the same project.</p>
 </main>
 <footer>
 <a href="https://github.com/Allan-Nava/Go-DDD-Scaffold">GitHub</a>
 <a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/releases">Releases</a>
 <a href="https://marketplace.visualstudio.com/items?itemName=allannava95.go-ddd-scaffold">VS Code</a>
+<a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/blob/main/docs/ddd-guide.md">DDD guide</a>
 <a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/blob/main/docs/audit-2026-11-06.md">Audit</a>
 <span>MIT · by <a href="https://github.com/Allan-Nava">Allan Nava</a></span>
 </footer>

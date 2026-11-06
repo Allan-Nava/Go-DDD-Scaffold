@@ -1,0 +1,70 @@
+package application
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"{{.ProjectPath}}/internal/{{.Module}}/domain"
+	"{{.ProjectPath}}/internal/{{.Module}}/infrastructure"
+)
+
+// newTestService wires the use cases to the in-memory repository, with a fixed
+// clock and predictable ids.
+func newTestService() *Service {
+	s := NewService(infrastructure.NewMemoryStore())
+	s.now = func() time.Time { return time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC) }
+	n := 0
+	s.newID = func() domain.ID {
+		n++
+		return domain.ID("id-" + string(rune('0'+n)))
+	}
+	return s
+}
+
+func TestCreateThenGet(t *testing.T) {
+	ctx := context.Background()
+	s := newTestService()
+
+	created, err := s.Create(ctx, "first")
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	got, err := s.Get(ctx, string(created.ID()))
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if got.Name().String() != "first" || got.Status() != domain.StatusActive {
+		t.Errorf("Get = %q/%q, want first/active", got.Name(), got.Status())
+	}
+}
+
+func TestCreateRejectsAnInvalidName(t *testing.T) {
+	if _, err := newTestService().Create(context.Background(), " "); !errors.Is(err, domain.ErrInvalidName) {
+		t.Errorf("error = %v, want ErrInvalidName", err)
+	}
+}
+
+func TestArchiveIsPersistedAndFinal(t *testing.T) {
+	ctx := context.Background()
+	s := newTestService()
+	created, _ := s.Create(ctx, "first")
+	id := string(created.ID())
+
+	if _, err := s.Archive(ctx, id); err != nil {
+		t.Fatalf("Archive: %v", err)
+	}
+	if got, _ := s.Get(ctx, id); got.Status() != domain.StatusArchived {
+		t.Errorf("status after Archive = %q, the change was not saved", got.Status())
+	}
+	if _, err := s.Rename(ctx, id, "second"); !errors.Is(err, domain.ErrAlreadyArchived) {
+		t.Errorf("Rename after Archive error = %v, want ErrAlreadyArchived", err)
+	}
+}
+
+func TestUnknownIDIsNotFound(t *testing.T) {
+	if _, err := newTestService().Archive(context.Background(), "nope"); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("error = %v, want ErrNotFound", err)
+	}
+}

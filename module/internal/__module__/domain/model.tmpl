@@ -1,0 +1,122 @@
+// Package domain is the {{.Module}} bounded context's model: the {{.Entity}}
+// aggregate, its value objects, the domain errors and the repository port.
+//
+// It imports only the standard library. The rules of the business live here,
+// next to the data they protect; internal/archtest fails the build if this
+// package starts importing a framework, the database or another layer.
+package domain
+
+import (
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+	"unicode/utf8"
+)
+
+// Domain errors. The transport layer maps them to status codes: nothing in
+// this package knows about HTTP.
+var (
+	ErrNotFound        = errors.New("{{.EntityVar}} not found")
+	ErrInvalidName     = errors.New("name must be between 1 and 100 characters")
+	ErrAlreadyArchived = errors.New("{{.EntityVar}} is archived")
+)
+
+// ID identifies a {{.Entity}}.
+type ID string
+
+// maxNameLen is the longest name accepted, in characters.
+const maxNameLen = 100
+
+// Name is a value object: a Name that exists is valid, so no other layer has
+// to check it again.
+type Name struct {
+	value string
+}
+
+// NewName validates raw and returns it as a Name.
+func NewName(raw string) (Name, error) {
+	v := strings.TrimSpace(raw)
+	if v == "" || utf8.RuneCountInString(v) > maxNameLen {
+		return Name{}, ErrInvalidName
+	}
+	return Name{value: v}, nil
+}
+
+func (n Name) String() string { return n.value }
+
+// Status is the lifecycle state of a {{.Entity}}.
+type Status string
+
+// The states a {{.Entity}} can be in.
+const (
+	StatusActive   Status = "active"
+	StatusArchived Status = "archived"
+)
+
+// {{.Entity}} is the aggregate root. Its fields are unexported: state changes
+// go through methods that enforce the rules (a rich model), never through
+// setters that a service could call in the wrong order.
+type {{.Entity}} struct {
+	id        ID
+	name      Name
+	status    Status
+	createdAt time.Time
+	updatedAt time.Time
+}
+
+// New{{.Entity}} creates an active {{.Entity}}.
+func New{{.Entity}}(id ID, name Name, now time.Time) *{{.Entity}} {
+	return &{{.Entity}}{id: id, name: name, status: StatusActive, createdAt: now, updatedAt: now}
+}
+
+// Rehydrate{{.Entity}} rebuilds a {{.Entity}} from stored data. It is for
+// repositories only, and it re-validates: a corrupt row becomes an error, not
+// an aggregate in an impossible state.
+func Rehydrate{{.Entity}}(id, name, status string, createdAt, updatedAt time.Time) (*{{.Entity}}, error) {
+	n, err := NewName(name)
+	if err != nil {
+		return nil, fmt.Errorf("stored {{.EntityVar}} %s: %w", id, err)
+	}
+	s := Status(status)
+	if s != StatusActive && s != StatusArchived {
+		return nil, fmt.Errorf("stored {{.EntityVar}} %s: unknown status %q", id, status)
+	}
+	return &{{.Entity}}{id: ID(id), name: n, status: s, createdAt: createdAt, updatedAt: updatedAt}, nil
+}
+
+// Rename changes the name. An archived {{.Entity}} is read-only.
+func (e *{{.Entity}}) Rename(name Name, now time.Time) error {
+	if e.status == StatusArchived {
+		return ErrAlreadyArchived
+	}
+	e.name = name
+	e.updatedAt = now
+	return nil
+}
+
+// Archive moves the {{.Entity}} to its final state. Archiving twice is an
+// error, so a client retrying blindly finds out.
+func (e *{{.Entity}}) Archive(now time.Time) error {
+	if e.status == StatusArchived {
+		return ErrAlreadyArchived
+	}
+	e.status = StatusArchived
+	e.updatedAt = now
+	return nil
+}
+
+// ID returns the identifier.
+func (e *{{.Entity}}) ID() ID { return e.id }
+
+// Name returns the current name.
+func (e *{{.Entity}}) Name() Name { return e.name }
+
+// Status returns the lifecycle state.
+func (e *{{.Entity}}) Status() Status { return e.status }
+
+// CreatedAt returns the creation time.
+func (e *{{.Entity}}) CreatedAt() time.Time { return e.createdAt }
+
+// UpdatedAt returns the time of the last change.
+func (e *{{.Entity}}) UpdatedAt() time.Time { return e.updatedAt }
