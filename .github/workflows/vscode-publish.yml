@@ -2,13 +2,13 @@ name: 'Vscode Extension Publish'
 #
 on:
   push:
-    # Qualunque tag fa da innesco: a decidere se pubblicare e la `version` in
-    # extensions/vscode/package.json, non il tag (vedi il job `decide`). Cosi i
-    # tag normali del repo bastano, senza cerimonie aggiuntive.
+    # Any tag is a trigger: what decides whether to publish is the `version` in
+    # extensions/vscode/package.json, not the tag (see the `decide` job). So the
+    # repo's normal tags are enough, with no extra ceremony.
     tags:
       - "v*"
       - "vscode-v*"
-  # Ripubblicazione manuale senza dover creare un tag.
+  # Manual republish without having to create a tag.
   workflow_dispatch:
 #
 permissions:
@@ -20,18 +20,18 @@ concurrency:
 #
 defaults:
   run:
-    # Un `run: cd extensions/vscode` sarebbe un no-op: ogni step apre una shell
-    # nuova. Il path va dichiarato qui.
+    # A `run: cd extensions/vscode` would be a no-op: every step opens a new
+    # shell. The path has to be declared here.
     working-directory: extensions/vscode
 #
 jobs:
   decide:
-    # In questo repo ogni commit porta un tag, ma una versione pubblicata sul
-    # Marketplace e **immutabile**: ripubblicare la stessa fallisce, e pubblicarne
-    # una nuova a ogni commit notifica gli utenti per modifiche che spesso non
-    # toccano nemmeno l'estensione. Quindi il tag fa solo da innesco: si pubblica
-    # se e solo se la version dichiarata non e ancora online.
-    name: serve pubblicare?
+    # In this repo every commit carries a tag, but a version published on the
+    # Marketplace is **immutable**: republishing the same one fails, and publishing
+    # a new one on every commit notifies users about changes that often do not
+    # even touch the extension. So the tag is only a trigger: it publishes if and
+    # only if the declared version is not online yet.
+    name: needs publishing?
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.check.outputs.version }}
@@ -45,7 +45,7 @@ jobs:
           ID="$(node -p "const p=require('./package.json'); p.publisher+'.'+p.name")"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-          # Gallery pubblica, nessun token necessario.
+          # Public gallery, no token needed.
           PUBLISHED="$(curl -sS -X POST \
             'https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery' \
             -H 'Content-Type: application/json' \
@@ -56,19 +56,19 @@ jobs:
                 const e=(JSON.parse(s).results?.[0]?.extensions)||[];
                 console.log(e.length ? e[0].versions.map(v=>v.version).join(' ') : '');
               });")"
-          echo "gia pubblicate: ${PUBLISHED:-nessuna}"
+          echo "already published: ${PUBLISHED:-none}"
 
           if echo " $PUBLISHED " | grep -q " $VERSION "; then
             echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::$ID $VERSION e gia sul Marketplace: niente da pubblicare. Per rilasciare, alza \"version\" in extensions/vscode/package.json."
+            echo "::notice::$ID $VERSION is already on the Marketplace: nothing to publish. To release, raise \"version\" in extensions/vscode/package.json."
           else
             echo "publish=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::$ID $VERSION non e ancora pubblicata: si procede."
+            echo "::notice::$ID $VERSION is not published yet: going ahead."
           fi
 
   verify:
-    # Non si pubblica cio che non passa i gate: su un tag `go.yml` non gira
-    # (reagisce solo a push su main e alle PR), quindi il controllo va rifatto qui.
+    # Nothing that fails the gates gets published: `go.yml` does not run on a tag
+    # (it only reacts to pushes to main and to PRs), so the check is repeated here.
     name: verify
     needs: decide
     if: needs.decide.outputs.publish == 'true'
@@ -97,15 +97,15 @@ jobs:
           cache-dependency-path: extensions/vscode/package-lock.json
       - run: npm ci
 
-      # --no-dependencies: l'estensione non ha dipendenze runtime, quindi vsce
-      # non deve ne risolverle ne includerle.
+      # --no-dependencies: the extension has no runtime dependencies, so vsce
+      # must neither resolve nor include them.
       - name: Package .vsix
         run: npx --yes @vscode/vsce@3 package --no-dependencies --out extension.vsix
 
-      # Artifact e non GitHub Release di proposito: creare una release farebbe
-      # scattare `release.yml` e `go-release.yml` (che reagiscono a
-      # `release: published`), i quali pubblicherebbero i binari della CLI Go
-      # dentro una release dell'estensione.
+      # An artifact and not a GitHub Release on purpose: creating a release would
+      # trigger `release.yml` and `go-release.yml` (which react to
+      # `release: published`), and they would publish the Go CLI binaries
+      # inside an extension release.
       - name: Upload .vsix
         uses: actions/upload-artifact@v4
         with:
@@ -118,8 +118,8 @@ jobs:
     needs: [decide, package]
     runs-on: ubuntu-latest
     env:
-      # Letti qui cosi gli `if` degli step possono verificarne la presenza:
-      # senza il secret lo step viene saltato invece di fallire.
+      # Read here so the steps' `if`s can check whether they are present:
+      # without the secret the step is skipped instead of failing.
       VSCE_PAT: ${{ secrets.VSCE_PAT }}
       OVSX_PAT: ${{ secrets.OVSX_PAT }}
       VERSION: ${{ needs.decide.outputs.version }}
@@ -140,19 +140,19 @@ jobs:
         if: ${{ env.OVSX_PAT != '' }}
         run: npx --yes ovsx@1 publish --no-dependencies
 
-      - name: Riepilogo
+      - name: Summary
         run: |
           {
-            echo "### Estensione VSCode $VERSION"
+            echo "### VS Code extension $VERSION"
             if [ -n "$VSCE_PAT" ]; then
-              echo "- Visual Studio Marketplace: pubblicata"
+              echo "- Visual Studio Marketplace: published"
             else
-              echo "- Visual Studio Marketplace: **saltata**, manca il secret \`VSCE_PAT\`"
+              echo "- Visual Studio Marketplace: **skipped**, the \`VSCE_PAT\` secret is missing"
             fi
             if [ -n "$OVSX_PAT" ]; then
-              echo "- Open VSX: pubblicata"
+              echo "- Open VSX: published"
             else
-              echo "- Open VSX: **saltata**, manca il secret \`OVSX_PAT\`"
+              echo "- Open VSX: **skipped**, the \`OVSX_PAT\` secret is missing"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 #

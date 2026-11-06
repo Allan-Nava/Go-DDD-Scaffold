@@ -1,48 +1,48 @@
 #!/usr/bin/env python3
 """
-backlog.py — parsing + regole di validazione condivise di docs/backlog.md.
+backlog.py — parsing and validation rules shared by everything that reads docs/backlog.md.
 
-FONTE UNICA delle regole strutturali del backlog: importata da
-`sync-backlog-to-issues.py` (che apre/aggiorna le issue GitHub), da `backlog-lint.py`
-(che valida in CI) e da `generate-roadmap.py` (che genera la pagina milestone).
-Niente duplicazione dei regex/convenzioni tra gli script.
+SINGLE SOURCE of the backlog's structural rules: imported by `sync-backlog-to-issues.py`
+(which opens/updates the GitHub issues), by `backlog-lint.py` (which validates in CI) and by
+`generate-roadmap.py` (which generates the milestone page). No regex or convention is
+duplicated across the scripts.
 
-Un item del backlog è:
+A backlog item is:
 
-    ### `id-stabile` — Titolo
+    ### `stable-id` — Title
     - **status**: open|done          (default: open)
-    - **priority**: low|medium|high  (opzionale)
-    - **labels**: a, b, c            (opzionale)
-    - **milestone**: <titolo>        (opzionale — creata su GitHub se manca)
-    - **owner**: <login GitHub>      (opzionale)
-    - **ref**: <link>                (opzionale)
+    - **priority**: low|medium|high  (optional)
+    - **labels**: a, b, c            (optional)
+    - **milestone**: <title>         (optional — created on GitHub when missing)
+    - **owner**: <GitHub login>      (optional)
+    - **ref**: <link>                (optional)
 
-    prosa … (diventa il corpo della issue)
+    prose … (becomes the issue body)
 
-`parse_backlog()` è PURA (nessun sys.exit): ritorna la lista degli item. Ogni item porta,
-oltre ai campi usati dal sync, due chiavi tecniche per il linter:
-  - `_line`      : numero di riga (1-based) dell'heading `### ...`
-  - `_meta_seen` : lista di {key, line, value} dei bullet `- **k**: v` trovati nel
-                   *blocco meta* (la sequenza di bullet subito sotto l'heading, prima della
-                   prima riga di prosa) — serve a stanare chiavi sconosciute (refusi).
+`parse_backlog()` is PURE (no sys.exit): it returns the list of items. Besides the fields the
+sync uses, each item carries two technical keys for the linter:
+  - `_line`      : line number (1-based) of the `### ...` heading
+  - `_meta_seen` : list of {key, line, value} for the `- **k**: v` bullets found in the
+                   *meta block* (the bullets right under the heading, before the first line
+                   of prose) — used to catch unknown keys (typos).
 
-Questo modulo è il gemello di `docs/scripts/lib/backlog.py` in devops_hiway: stesse regole,
-stesso formato di item. Se lo modifichi qui, valuta l'allineamento anche là.
+This module is the twin of `docs/scripts/lib/backlog.py` in devops_hiway: same rules, same item
+format. If you change it here, consider aligning it there too.
 """
 import re
 
-# --- regex strutturali (fonte unica) ---------------------------------------------------
-# item: "### `id` — Titolo"  (id tra backtick; separatore — o - opzionale)
+# --- structural regexes (single source) -----------------------------------------------
+# item: "### `id` — Title"  (id in backticks; optional — or - separator)
 ITEM_RE = re.compile(r"^###\s+`([^`]+)`\s*[—\-]*\s*(.*)$")
 META_RE = re.compile(r"^[-*]\s+\*\*(\w+)\*\*:\s*(.+)$")
-FP_RE = re.compile(r"<!--\s*backlog-id:\s*([a-zA-Z0-9._-]+)")        # id (compat: con o senza | hash:)
+FP_RE = re.compile(r"<!--\s*backlog-id:\s*([a-zA-Z0-9._-]+)")        # id (compat: with or without | hash:)
 HASH_RE = re.compile(r"backlog-id:\s*[\w.-]+\s*\|\s*hash:\s*([0-9a-f]+)")
 
-# --- vocabolario ammesso ---------------------------------------------------------------
+# --- allowed vocabulary ----------------------------------------------------------------
 KNOWN_META = {"status", "priority", "labels", "milestone", "owner", "ref"}
 VALID_STATUS = {"open", "done"}
 VALID_PRIORITY = {"low", "medium", "high"}
-ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")   # kebab-case minuscolo
+ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")   # lowercase kebab-case
 
 
 def _new_item(item_id, title, line):
@@ -52,12 +52,12 @@ def _new_item(item_id, title, line):
 
 
 def parse_backlog(path):
-    """Parsa docs/backlog.md → lista di item (PURA, nessun sys.exit).
+    """Parse docs/backlog.md → list of items (PURE, no sys.exit).
 
-    Un bullet `- **k**: v` con `k` noto imposta il campo; qualunque altra riga (blank, prosa,
-    checklist, bullet con chiave non nota) finisce nel corpo. In più registra in `_meta_seen`
-    i bullet incontrati nel blocco meta iniziale (finché non parte la prosa) per permettere
-    al linter di segnalare i refusi di chiave.
+    A `- **k**: v` bullet with a known `k` sets the field; any other line (blank, prose,
+    checklist, bullet with an unknown key) goes into the body. It also records in `_meta_seen`
+    the bullets met in the initial meta block (until prose starts), so the linter can report
+    key typos.
     """
     items, cur, in_meta = [], None, False
     with open(path, encoding="utf-8") as f:
@@ -72,7 +72,7 @@ def parse_backlog(path):
             continue
         if cur is None:
             continue
-        if re.match(r"^#{1,3}\s", ln):   # nuova sezione (non-item) → chiude l'item corrente
+        if re.match(r"^#{1,3}\s", ln):   # new (non-item) section → closes the current item
             items.append(cur)
             cur, in_meta = None, False
             continue
@@ -86,9 +86,9 @@ def parse_backlog(path):
             elif k in ("status", "priority", "ref", "owner", "milestone"):
                 cur[k] = v.strip().lstrip("@")
             else:
-                cur["body"].append(ln)   # chiave non nota → corpo
+                cur["body"].append(ln)   # unknown key → body
         else:
-            if ln.strip():               # prima riga di prosa non-blank → fine blocco meta
+            if ln.strip():               # first non-blank line of prose → end of the meta block
                 in_meta = False
             cur["body"].append(ln)
     if cur:
@@ -97,8 +97,8 @@ def parse_backlog(path):
 
 
 def item_hash(item):
-    """Hash stabile del contenuto sincronizzato (titolo/labels/priority/ref/owner/milestone/corpo).
-    Embeddato nel fingerprint della issue: se cambia → la issue va aggiornata."""
+    """Stable hash of the synced content (title/labels/priority/ref/owner/milestone/body).
+    Embedded in the issue fingerprint: when it changes, the issue needs updating."""
     import hashlib
     canon = "\x1f".join([
         item["title"],
@@ -113,63 +113,63 @@ def item_hash(item):
 
 
 def _norm_milestone(title):
-    """Normalizza un titolo milestone per il match 'stessa milestone' (case + spazi collassati)."""
+    """Normalise a milestone title for the 'same milestone' match (case + collapsed spaces)."""
     return re.sub(r"\s+", " ", title).strip().casefold()
 
 
 def milestones(items, include_done=False):
-    """Titoli milestone distinti, ordinati. Le milestone sono DINAMICHE: non esiste un elenco
-    hardcoded, esistono solo i titoli dichiarati dagli item."""
+    """Distinct milestone titles, sorted. Milestones are DYNAMIC: there is no hardcoded list,
+    only the titles the items declare."""
     src = items if include_done else [it for it in items if it["status"].lower() != "done"]
     return sorted({it["milestone"] for it in src if it["milestone"]})
 
 
 def lint(items):
-    """Valida gli item parsati. Ritorna (errors, warnings): due liste di stringhe già formattate
-    (con numero di riga). `errors` non vuoto ⇒ il linter deve uscire con status ≠0."""
+    """Validate the parsed items. Returns (errors, warnings): two lists of formatted strings
+    (with line numbers). Non-empty `errors` ⇒ the linter must exit with a non-zero status."""
     errors, warnings = [], []
 
-    # 1) id duplicati (fatale: il sync stesso rifiuterebbe)
+    # 1) duplicate ids (fatal: the sync itself would refuse them)
     by_id = {}
     for it in items:
         by_id.setdefault(it["id"], []).append(it["_line"])
     for iid, ls in by_id.items():
         if len(ls) > 1:
-            errors.append(f"id duplicato `{iid}` (righe {', '.join(map(str, ls))})")
+            errors.append(f"duplicate id `{iid}` (lines {', '.join(map(str, ls))})")
 
     for it in items:
         line, iid = it["_line"], it["id"]
-        loc = f"riga {line} [{iid}]"
+        loc = f"line {line} [{iid}]"
 
-        # 2) formato id
+        # 2) id format
         if not ID_RE.match(iid):
-            errors.append(f"{loc}: id non valido (atteso kebab-case minuscolo `[a-z0-9._-]`)")
+            errors.append(f"{loc}: invalid id (expected lowercase kebab-case `[a-z0-9._-]`)")
 
-        # 3) titolo non vuoto
+        # 3) non-empty title
         if not it["title"].strip():
-            errors.append(f"{loc}: titolo vuoto")
+            errors.append(f"{loc}: empty title")
 
-        # 4) status / priority nel vocabolario
+        # 4) status / priority in the vocabulary
         if it["status"] and it["status"].lower() not in VALID_STATUS:
-            errors.append(f"{loc}: status `{it['status']}` non valido (atteso {sorted(VALID_STATUS)})")
+            errors.append(f"{loc}: invalid status `{it['status']}` (expected {sorted(VALID_STATUS)})")
         if it["priority"] and it["priority"].lower() not in VALID_PRIORITY:
-            errors.append(f"{loc}: priority `{it['priority']}` non valida (attesa {sorted(VALID_PRIORITY)})")
+            errors.append(f"{loc}: invalid priority `{it['priority']}` (expected {sorted(VALID_PRIORITY)})")
 
-        # 5) chiavi meta sconosciute nel blocco iniziale (refusi tipo `- **lables**:`)
+        # 5) unknown meta keys in the initial block (typos such as `- **lables**:`)
         for meta in it["_meta_seen"]:
             if meta["key"].lower() not in KNOWN_META:
-                errors.append(f"riga {meta['line']} [{iid}]: chiave meta sconosciuta "
-                              f"`{meta['key']}` (note: {sorted(KNOWN_META)}) — refuso?")
+                errors.append(f"line {meta['line']} [{iid}]: unknown meta key "
+                              f"`{meta['key']}` (known: {sorted(KNOWN_META)}) — typo?")
 
-    # 6) coerenza titoli milestone: stessi caratteri ovunque (segnala varianti case/spazi)
+    # 6) consistent milestone titles: same characters everywhere (reports case/space variants)
     variants = {}
     for it in items:
         if it["milestone"]:
             variants.setdefault(_norm_milestone(it["milestone"]), set()).add(it["milestone"])
     for norm, raws in variants.items():
         if len(raws) > 1:
-            warnings.append("milestone scritta in modi diversi (stessa milestone?): "
+            warnings.append("milestone written in different ways (same milestone?): "
                             + " · ".join(f"«{r}»" for r in sorted(raws))
-                            + " → uniformare il titolo (match esatto per carattere)")
+                            + " → make the title identical (the match is exact, character by character)")
 
     return errors, warnings

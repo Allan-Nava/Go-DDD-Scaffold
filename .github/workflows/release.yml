@@ -2,8 +2,8 @@ name: Build Release
 #
 on:
   release:
-    # Solo `published`: con il bare `on: release` il workflow riparte anche su
-    # edited/unpublished/deleted, ripubblicando gli stessi asset.
+    # Only `published`: with a bare `on: release` the workflow also restarts on
+    # edited/unpublished/deleted, republishing the same assets.
     types: [published]
 #
 permissions:
@@ -11,16 +11,16 @@ permissions:
 #
 jobs:
   release:
-    # Una matrice invece di 8 job copiaincollati: i nomi dei job derivano dalla
-    # coppia goos/goarch, quindi non possono più mentire (c'erano tre etichette
-    # sbagliate — "macos/32" per darwin/amd64, "linux/386" per arm, "linux/amd64"
-    # per arm64 — e darwin/amd64 era duplicato in due job, mentre darwin/arm64
-    # non veniva pubblicato affatto).
+    # One matrix instead of 8 copy-pasted jobs: the job names come from the
+    # goos/goarch pair, so they can no longer lie (there were three wrong
+    # labels — "macos/32" for darwin/amd64, "linux/386" for arm, "linux/amd64"
+    # for arm64 — and darwin/amd64 was duplicated in two jobs, while darwin/arm64
+    # was not published at all).
     name: release ${{ matrix.goos }}/${{ matrix.goarch }}
     runs-on: ubuntu-latest
     permissions:
-      # Il minimo per caricare gli asset sulla release: era `write-all` su ognuno
-      # degli 8 job, con una action di terze parti nello stesso step.
+      # The minimum to upload assets to the release: it was `write-all` on each
+      # of the 8 jobs, with a third-party action in the same step.
       contents: write
     strategy:
       fail-fast: false
@@ -38,8 +38,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: compile and release
-        # Pinnata al SHA, non al tag: `@v1.5.01` è mutabile e chi controlla il
-        # tag potrebbe riscrivere gli asset di release di questo repo.
+        # Pinned to the SHA, not the tag: `@v1.5.01` is mutable and whoever controls
+        # the tag could rewrite this repo's release assets.
         uses: Allan-Nava/go-release.action@ad979660e82cf6cd6cf4050bbec45fd4a26d6d25 # v1.5.01
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -47,7 +47,7 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           EXTRA_FILES: "LICENSE"
           CMD_PATH: "main.go"
-          # BUILD_ARGS e PROJECT_NAME sono deliberatamente assenti: l'action li
-          # ignora quando il repo ha un ./build.sh eseguibile (prende il nostro,
-          # e sovrascrive PROJECT_NAME con il basename del repo). I flag di build
-          # -trimpath/-ldflags e il nome dell'output vivono in build.sh.
+          # BUILD_ARGS and PROJECT_NAME are deliberately absent: the action ignores
+          # them when the repo has an executable ./build.sh (it takes ours, and
+          # overwrites PROJECT_NAME with the repo's basename). The -trimpath/-ldflags
+          # build flags and the output name live in build.sh.

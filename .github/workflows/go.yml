@@ -16,9 +16,9 @@ concurrency:
 #
 jobs:
   docs:
-    # Gate sul backlog: id univoci, vocabolario, titoli milestone coerenti, e la
-    # roadmap committata allineata al backlog (è generata, non scritta a mano).
-    name: backlog & pagine generate
+    # Gate on the backlog: unique ids, vocabulary, consistent milestone titles, and
+    # the committed roadmap in line with the backlog (it is generated, not hand-written).
+    name: backlog & generated pages
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,8 +31,8 @@ jobs:
         run: python3 docs/scripts/generate-roadmap.py --check
 
   extension:
-    # Niente verificava l'estensione a ogni push: `vscode-publish.yml` la compila
-    # solo al momento di pubblicarla, cioè troppo tardi.
+    # Nothing checked the extension on every push: `vscode-publish.yml` only builds
+    # it at publish time, which is too late.
     name: vscode extension
     runs-on: ubuntu-latest
     defaults:
@@ -48,13 +48,13 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
-      # Il bundle di produzione è ciò che finisce sui marketplace: va provato qui,
-      # non scoperto rotto durante il publish su tag.
+      # The production bundle is what ends up on the marketplaces: it has to be
+      # tried here, not discovered broken during the publish on a tag.
       - run: npm run vscode:prepublish
 
   lint:
-    # gofmt + go vet non coprono i valori di ritorno ignorati: il bug più costoso
-    # dell'audit 2026-08-11 era un errore di filepath.Walk scartato in silenzio.
+    # gofmt + go vet do not cover ignored return values: the most expensive bug of
+    # the 2026-08-11 audit was a filepath.Walk error silently discarded.
     name: golangci-lint
     runs-on: ubuntu-latest
     steps:

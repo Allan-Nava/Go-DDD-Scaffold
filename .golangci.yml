@@ -1,41 +1,41 @@
-# golangci-lint v2. Aggiornare in coppia con il job `lint` di .github/workflows/go.yml
-# e con `make lint`, così il gate locale e quello CI restano lo stesso gate.
+# golangci-lint v2. Update together with the `lint` job in .github/workflows/go.yml
+# and with `make lint`, so the local gate and the CI one stay the same gate.
 version: "2"
 
 linters:
-  # Oltre ai default di v2 (errcheck, govet, ineffassign, staticcheck, unused).
-  # errcheck è il motivo per cui questo file esiste: il bug più costoso dell'audit
-  # 2026-08-11 era il valore di ritorno di filepath.Walk scartato in getTemplateSets(),
-  # che nascondeva ogni errore di I/O sui template.
+  # On top of the v2 defaults (errcheck, govet, ineffassign, staticcheck, unused).
+  # errcheck is why this file exists: the most expensive bug of the 2026-08-11 audit
+  # was the return value of filepath.Walk discarded in getTemplateSets(), which hid
+  # every I/O error on the templates.
   enable:
-    - bodyclose      # response body non chiusi
-    - copyloopvar    # copie inutili della variabile di loop (Go 1.22+)
+    - bodyclose      # response bodies not closed
+    - copyloopvar    # useless copies of the loop variable (Go 1.22+)
     - misspell
-    - nilerr         # `return nil` dopo aver ricevuto un err non nil
+    - nilerr         # `return nil` after receiving a non-nil err
     - revive
-    - unconvert      # conversioni di tipo superflue
+    - unconvert      # unnecessary type conversions
     - wastedassign
 
   settings:
     errcheck:
       check-type-assertions: true
-      # check-blank resta OFF di proposito: `_ = f.Close()` è il modo leggibile di
-      # dichiarare "errore ignorato consapevolmente", e va accompagnato dal perché.
-      # Con check-blank ON l'unica via sarebbe `//nolint`, che dice meno.
+      # check-blank stays OFF on purpose: `_ = f.Close()` is the readable way to
+      # declare "error ignored on purpose", and it comes with the reason why.
+      # With check-blank ON the only way would be `//nolint`, which says less.
       check-blank: false
     revive:
       rules:
-        - name: exported          # i simboli esportati vogliono un commento
-        - name: error-strings     # errori in minuscolo, senza punteggiatura finale
+        - name: exported          # exported symbols want a comment
+        - name: error-strings     # lowercase errors, no final punctuation
         - name: indent-error-flow
         - name: unexported-return
         - name: var-naming
 
   exclusions:
     paths:
-      # Codice Go di terze parti finito sotto le dipendenze npm dell'estensione.
+      # Third-party Go code that ended up under the extension's npm dependencies.
       - extensions/
-    # Nei test la verbosità non paga: t.Setenv/t.TempDir già falliscono da soli.
+    # In tests verbosity does not pay off: t.Setenv/t.TempDir already fail on their own.
     rules:
       - path: _test\.go
         linters:
