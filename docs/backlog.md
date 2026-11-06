@@ -148,9 +148,9 @@ container `ghcr.io/actions/jekyll-build-pages` carica sempre `jekyll-github-meta
 locale legge quell'endpoint via `curl` (HTTP 200) ma viene rifiutato dentro il container, per motivi
 non osservabili da fuori. Il primo run dopo il fix è quindi la prima vera verifica.
 
-**Chiuso il 2026-11-06**: Jekyll è stato tolto. Il sito ora è una pagina statica (`docs/index.html`)
-pubblicata da `pages.yml` senza build, come gli altri progetti; `_config.yml`, `index.md` e
-`jekyll-gh-pages.yml` sono stati rimossi, quindi i punti qui sotto non si applicano più.
+**Closed on 2026-11-06**: Jekyll was removed. The site is now a static page (`docs/index.html`)
+published by `pages.yml` with no build, like the other projects; `_config.yml`, `index.md` and
+`jekyll-gh-pages.yml` were deleted, so the points below no longer apply.
 
 Da sistemare in `docs/_config.yml`, indipendentemente:
 
@@ -162,360 +162,359 @@ Da sistemare in `docs/_config.yml`, indipendentemente:
 - [ ] valutare un `repository: Allan-Nava/Go-DDD-Scaffold` esplicito, così `jekyll-github-metadata`
       non deve dedurre il nwo dal contesto.
 
-## Milestone dell'audit di prodotto 2026-11-06
+## Milestones from the 2026-11-06 product audit
 
-Piano completo e motivazioni: [audit-2026-11-06.md](audit-2026-11-06.md).
+Full plan and reasoning: [audit-2026-11-06.md](audit-2026-11-06.md).
 
-### `first-run-needs-mysql` — Il primo `make run` del progetto generato muore senza MySQL
+### `first-run-needs-mysql` — The generated project's first `make run` dies without MySQL
 
 - **status**: open
 - **priority**: high
 - **labels**: bug, template
-- **milestone**: v0.9 — Primo avvio senza intoppi
+- **milestone**: v0.9 — Smooth first run
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-`make run` imposta `APP_ENV=local`, che carica `env/.env.local` con `DB_HOST=localhost`: senza un MySQL
-acceso il servizio esce con `fatal` ("connection refused"). Il README generato promette il contrario
-("listens on :8080", "starts without a database when `DB_HOST` is empty").
+`make run` sets `APP_ENV=local`, which loads `env/.env.local` with `DB_HOST=localhost`: with no MySQL
+running the service exits with `fatal` ("connection refused"). The generated README promises the
+opposite ("listens on :8080", "starts without a database when `DB_HOST` is empty").
 
-La CI non lo vede: lo smoke test gira con `APP_ENV: runner`, cioè senza dotenv.
+CI does not see it: the smoke test runs with `APP_ENV: runner`, i.e. without the dotenv file.
 
-- [ ] `DB_HOST` vuoto in `.env.local` (il database si accende con `make up`), oppure README allineato
-- [ ] lo smoke test CI e `make e2e` girano con `APP_ENV=local`, come l'utente
+- [ ] empty `DB_HOST` in `.env.local` (the database comes up with `make up`), or a README that matches
+- [ ] the CI smoke test and `make e2e` run with `APP_ENV=local`, like a user
 
-### `module-path-dotted-dirs` — Module path sbagliato se il percorso contiene un segmento con un punto
+### `module-path-dotted-dirs` — Wrong module path when the path contains a segment with a dot
 
 - **status**: open
 - **priority**: high
 - **labels**: bug, go
-- **milestone**: v0.9 — Primo avvio senza intoppi
+- **milestone**: v0.9 — Smooth first run
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-`ModulePath` prende il primo segmento "host-like": `/Users/john.doe/code/svc` → `module john.doe/code/svc`.
-Colpisce ogni utente con `nome.cognome` come nome utente (comune su macOS e Windows).
+`ModulePath` takes the first "host-like" segment: `/Users/john.doe/code/svc` → `module john.doe/code/svc`.
+It hits every user whose username is `first.last` (common on macOS and Windows).
 
-- [ ] riconoscere come host solo i domini noti (`github.com`, `gitlab.com`, `bitbucket.org`, …) o un
-      segmento seguito da almeno un owner e un repo, oppure leggere il remote `origin` di git se c'è
-- [ ] test di regressione con `/Users/john.doe/…`
+- [ ] recognise as a host only known domains (`github.com`, `gitlab.com`, `bitbucket.org`, …) or a
+      segment followed by at least an owner and a repo, or read the git `origin` remote when present
+- [ ] regression test with `/Users/john.doe/…`
 
-### `module-and-name-flags` — Mancano `--module` e `--name`: il path dedotto non si può correggere
+### `module-and-name-flags` — No `--module` and `--name`: the inferred path cannot be corrected
 
 - **status**: open
 - **priority**: medium
 - **labels**: enhancement, go
-- **milestone**: v0.9 — Primo avvio senza intoppi
+- **milestone**: v0.9 — Smooth first run
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Quando la deduzione sbaglia (vedi `module-path-dotted-dirs`) l'unica via è editare `go.mod` e tutti gli
-import a mano. `scaffold init --module github.com/acme/svc --name svc` rende la deduzione un default, non
-un vincolo. Va propagato all'estensione VSCode (argv in `cli.ts`).
+When inference is wrong (see `module-path-dotted-dirs`) the only way out is editing `go.mod` and every
+import by hand. `scaffold init --module github.com/acme/svc --name svc` turns inference into a default,
+not a constraint. Propagate it to the VS Code extension (argv in `cli.ts`).
 
-### `project-name-validation` — Nomi di directory non validi producono un progetto rotto
+### `project-name-validation` — Invalid directory names produce a broken project
 
 - **status**: open
 - **priority**: high
 - **labels**: bug, template
-- **milestone**: v0.9 — Primo avvio senza intoppi
+- **milestone**: v0.9 — Smooth first run
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Il nome della directory finisce senza controlli in `go.mod`, nel servizio di `docker-compose.yml` e nel
-nome del binario del `Dockerfile`: `/work/Service Name` → `module Service Name` (non valido).
+The directory name ends up unchecked in `go.mod`, in the `docker-compose.yml` service and in the
+`Dockerfile` binary name: `/work/Service Name` → `module Service Name` (invalid).
 
-- [ ] validare module path (`golang.org/x/mod/module.CheckPath`) e nome; errore chiaro prima di scrivere
-- [ ] normalizzare il nome per compose e binario (minuscolo, `-` al posto degli spazi)
+- [ ] validate the module path (`golang.org/x/mod/module.CheckPath`) and the name; clear error before writing
+- [ ] normalise the name for compose and the binary (lowercase, `-` instead of spaces)
 
-### `atomic-file-writes` — `--force` può cancellare il file dell'utente; un flush fallito lascia file parziali
+### `atomic-file-writes` — `--force` can delete the user's file; a failed flush leaves partial files
 
 - **status**: open
 - **priority**: medium
 - **labels**: bug, go
-- **milestone**: v0.9 — Primo avvio senza intoppi
+- **milestone**: v0.9 — Smooth first run
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Con `--force` il file è aperto con `O_TRUNC`; se il rendering fallisce, il ramo di errore fa `os.Remove`:
-il file originale è prima troncato e poi cancellato. Un errore di `Flush` lascia invece un file parziale.
+With `--force` the file is opened with `O_TRUNC`; if rendering fails, the error path calls `os.Remove`:
+the original file is truncated first and then deleted. A `Flush` error leaves a partial file instead.
 
-- [ ] scrivere in un file temporaneo nella stessa directory, `rename` solo a scrittura riuscita
-- [ ] test con un `fs.FS` che fallisce a metà, con e senza `--force`
+- [ ] write to a temporary file in the same directory, `rename` only after a successful write
+- [ ] test with an `fs.FS` that fails halfway, with and without `--force`
 
-### `app-env-default-mismatch` — `APP_ENV` ha due default diversi nel progetto generato
+### `app-env-default-mismatch` — `APP_ENV` has two different defaults in the generated project
 
 - **status**: open
 - **priority**: low
 - **labels**: bug, template
-- **milestone**: v0.9 — Primo avvio senza intoppi
+- **milestone**: v0.9 — Smooth first run
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-`Configuration.AppEnv` ha `envDefault:"local"`, ma `loadDotEnv` legge `os.Getenv("APP_ENV")`: senza la
-variabile la configurazione dice `local` ma `.env.local` non viene caricato. Un solo default, in un punto.
+`Configuration.AppEnv` has `envDefault:"local"`, but `loadDotEnv` reads `os.Getenv("APP_ENV")`: without
+the variable the configuration says `local` but `.env.local` is not loaded. One default, in one place.
 
-### `generated-gitignore` — Il progetto generato non ha un `.gitignore`
+### `generated-gitignore` — The generated project has no `.gitignore`
 
 - **status**: open
 - **priority**: medium
 - **labels**: enhancement, template
-- **milestone**: v0.9 — Primo avvio senza intoppi
+- **milestone**: v0.9 — Smooth first run
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Il primo `git add .` committa `bin/` e `env/.env.local` (con `API_SECRET` e la password del DB).
-Generare un `.gitignore` (in `static/`) con `bin/`, `env/.env.*` tranne un `.env.example`, `*.test`, `*.out`.
+The first `git add .` commits `bin/` and `env/.env.local` (with `API_SECRET` and the DB password).
+Generate a `.gitignore` (in `static/`) with `bin/`, `env/.env.*` except an `.env.example`, `*.test`, `*.out`.
 
-### `cors-closed-by-default` — CORS aperto a tutti di default nel progetto generato
+### `cors-closed-by-default` — CORS open to everyone by default in the generated project
 
 - **status**: open
 - **priority**: medium
 - **labels**: security, template
-- **milestone**: v0.9 — Primo avvio senza intoppi
+- **milestone**: v0.9 — Smooth first run
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-`AllowOrigins: "*"` con `Authorization` tra gli header: il default di un servizio nuovo deve essere chiuso.
-`CORS_ALLOWED_ORIGINS` da ambiente, vuoto = nessuna origine esterna, con un test.
+`AllowOrigins: "*"` with `Authorization` among the headers: a new service's default must be closed.
+`CORS_ALLOWED_ORIGINS` from the environment, empty = no external origin, with a test.
 
-### `unused-config-fields` — Configurazione dichiarata ma non usata (`LOG_LEVEL`, `RUNNING_MODE`, `API_SECRET`)
+### `unused-config-fields` — Configuration declared but unused (`LOG_LEVEL`, `RUNNING_MODE`, `API_SECRET`)
 
 - **status**: open
 - **priority**: low
 - **labels**: enhancement, template
-- **milestone**: v0.9 — Primo avvio senza intoppi
+- **milestone**: v0.9 — Smooth first run
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-`LOG_LEVEL` non cambia nulla (`zap.NewProduction()` è sempre a `info`); `RUNNING_MODE` e `API_SECRET` non
-sono letti da nessun codice. Collegare `LOG_LEVEL` al logger e togliere gli altri due (o usarli davvero).
-Da decidere insieme a `config-yml-double-source`.
+`LOG_LEVEL` changes nothing (`zap.NewProduction()` is always at `info`); `RUNNING_MODE` and `API_SECRET`
+are read by no code. Wire `LOG_LEVEL` to the logger and remove the other two (or actually use them).
+To be decided together with `config-yml-double-source`.
 
-### `ddd-layout-generated` — Il progetto generato non contiene nessun livello DDD
+### `ddd-layout-generated` — The generated project contains no DDD layer
 
 - **status**: open
 - **priority**: high
 - **labels**: enhancement, template
-- **milestone**: v1.0 — DDD vero nel progetto generato
+- **milestone**: v1.0 — Real DDD in the generated project
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Il nome promette un layout DDD; il risultato ha `cmd/`, `config/`, `database/`, `env/` e nessun dominio.
-È il gap principale del prodotto.
+The name promises a DDD layout; the result has `cmd/`, `config/`, `database/`, `env/` and no domain.
+It is the product's main gap.
 
-Generare un layout a moduli (un bounded context per cartella) con un **modulo d'esempio completo**:
+Generate a module layout (one bounded context per folder) with a **complete example module**:
 
 ```
-internal/<modulo>/domain/          entità, value object, errori, interfaccia del repository
-internal/<modulo>/application/     casi d'uso, dipendono solo da domain
-internal/<modulo>/infrastructure/  store GORM che implementa il repository
-internal/<modulo>/transport/http/  handler HTTP ⇄ casi d'uso
+internal/<module>/domain/          entities, value objects, errors, repository interface
+internal/<module>/application/     use cases, depending only on domain
+internal/<module>/infrastructure/  GORM store implementing the repository
+internal/<module>/transport/http/  HTTP handlers ⇄ use cases
 ```
 
-- [ ] modulo d'esempio con test a ogni livello (dominio senza database, store con un fake o sqlite)
-- [ ] composition root in `cmd/` che collega i livelli (DI manuale; Wire come opzione in `di-wiring`)
-- [ ] README e `docs/index.html` aggiornati con l'albero e "dove vanno le regole"
+- [ ] example module with tests at every layer (domain without a database, store with a fake or sqlite)
+- [ ] composition root in `cmd/` wiring the layers (manual DI; Wire as an option in `di-wiring`)
+- [ ] README and `docs/index.html` updated with the tree and "where the rules go"
 
-### `scaffold-add-module` — Comando `scaffold add module <nome>` per generare un nuovo bounded context
+### `scaffold-add-module` — `scaffold add module <name>` command to generate a new bounded context
 
 - **status**: open
 - **priority**: high
 - **labels**: enhancement, go
-- **milestone**: v1.0 — DDD vero nel progetto generato
+- **milestone**: v1.0 — Real DDD in the generated project
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Dopo `init` serve un modo per aggiungere un dominio senza copiare a mano il modulo d'esempio:
-`scaffold add module billing` genera i quattro livelli, i test e la registrazione nel composition root.
-Idempotente come `init` (skip senza `--force`); comando esposto anche nell'estensione VSCode.
+After `init` there must be a way to add a domain without copying the example module by hand:
+`scaffold add module billing` generates the four layers, the tests and the registration in the
+composition root. Idempotent like `init` (skip without `--force`); also exposed in the VS Code extension.
 
-### `architecture-test` — Test d'architettura nel progetto generato: il dominio non importa l'infrastruttura
+### `architecture-test` — Architecture test in the generated project: the domain does not import infrastructure
 
 - **status**: open
 - **priority**: medium
 - **labels**: enhancement, template
-- **milestone**: v1.0 — DDD vero nel progetto generato
+- **milestone**: v1.0 — Real DDD in the generated project
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Un `internal/archtest` che legge gli import con `go/packages` (o `go list -json`) e fallisce se `domain`
-importa `infrastructure`/`transport` o un pacchetto di terze parti (GORM, Fiber). Rende la regola DDD
-verificabile in CI, non affidata alla review.
+An `internal/archtest` that reads imports with `go/packages` (or `go list -json`) and fails if `domain`
+imports `infrastructure`/`transport` or a third-party package (GORM, Fiber). It makes the DDD rule
+checkable in CI instead of relying on review.
 
-### `di-wiring` — Dependency injection: composition root esplicito, Wire come opzione
+### `di-wiring` — Dependency injection: explicit composition root, Wire as an option
 
 - **status**: open
 - **priority**: low
 - **labels**: enhancement, template
-- **milestone**: v1.0 — DDD vero nel progetto generato
+- **milestone**: v1.0 — Real DDD in the generated project
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Il default resta la DI manuale in `cmd/` (leggibile, zero strumenti). `--di wire` genera `wire.go` e
-`wire_gen.go` per chi la preferisce.
+The default stays manual DI in `cmd/` (readable, no tooling). `--di wire` generates `wire.go` and
+`wire_gen.go` for those who prefer it.
 
-### `ddd-guide-docs` — Guida al layout DDD generato: dove vanno le regole, modello anemico contro ricco
+### `ddd-guide-docs` — Guide to the generated DDD layout: where the rules go, anemic vs rich model
 
 - **status**: open
 - **priority**: medium
 - **labels**: documentation
-- **milestone**: v1.0 — DDD vero nel progetto generato
+- **milestone**: v1.0 — Real DDD in the generated project
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Una pagina in `docs/` con lo schema dei livelli, la regola delle dipendenze verso l'interno, un esempio
-di regola nell'aggregato contro la stessa regola nel service (modello anemico), e quando conviene quale.
+A page in `docs/` with the layer diagram, the inward dependency rule, an example of a rule in the
+aggregate versus the same rule in the service (anemic model), and when each one fits.
 
-### `health-readiness` — `/livez` e `/readyz`: oggi `/health` non controlla il database
+### `health-readiness` — `/livez` and `/readyz`: today `/health` does not check the database
 
 - **status**: open
 - **priority**: medium
 - **labels**: enhancement, template
-- **milestone**: v1.1 — Pronto per la produzione
+- **milestone**: v1.1 — Production ready
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-`/livez` risponde se il processo è vivo; `/readyz` controlla le dipendenze (ping del database con
-timeout) e risponde 503 finché non sono pronte. Health check anche nel `Dockerfile` e nel compose.
+`/livez` answers when the process is alive; `/readyz` checks the dependencies (database ping with a
+timeout) and answers 503 until they are ready. Health checks in the `Dockerfile` and in compose too.
 
-### `observability` — Osservabilità nel progetto generato: metriche, request id, tracing
+### `observability` — Observability in the generated project: metrics, request id, tracing
 
 - **status**: open
 - **priority**: medium
 - **labels**: enhancement, template
-- **milestone**: v1.1 — Pronto per la produzione
+- **milestone**: v1.1 — Production ready
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-- [ ] `/metrics` Prometheus con le metriche RED per rotta
-- [ ] request id propagato nei log e nelle risposte
-- [ ] OpenTelemetry opzionale (`OTEL_EXPORTER_OTLP_ENDPOINT` vuoto = spento)
+- [ ] Prometheus `/metrics` with RED metrics per route
+- [ ] request id propagated in logs and responses
+- [ ] optional OpenTelemetry (`OTEL_EXPORTER_OTLP_ENDPOINT` empty = off)
 
-### `db-migrations` — Migrazioni del database nel progetto generato
+### `db-migrations` — Database migrations in the generated project
 
 - **status**: open
 - **priority**: medium
 - **labels**: enhancement, template
-- **milestone**: v1.1 — Pronto per la produzione
+- **milestone**: v1.1 — Production ready
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Nessuna gestione dello schema oggi (né `AutoMigrate` né file di migrazione). Cartella `migrations/` con
-`goose` o `golang-migrate`, `make migrate-up/down`, e il modulo d'esempio con la sua prima migrazione.
+No schema management today (neither `AutoMigrate` nor migration files). A `migrations/` folder with
+`goose` or `golang-migrate`, `make migrate-up/down`, and the example module with its first migration.
 
-### `generated-ci-and-lint` — CI e `golangci-lint` per il progetto generato
+### `generated-ci-and-lint` — CI and `golangci-lint` for the generated project
 
 - **status**: open
 - **priority**: medium
 - **labels**: enhancement, template, github_actions
-- **milestone**: v1.1 — Pronto per la produzione
+- **milestone**: v1.1 — Production ready
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Il progetto generato non ha una pipeline. Generare `.github/workflows/ci.yml` (gofmt, vet, lint, test,
-build dell'immagine) e un `.golangci.yml` con le stesse regole che usa questo repo.
+The generated project has no pipeline. Generate `.github/workflows/ci.yml` (gofmt, vet, lint, test,
+image build) and a `.golangci.yml` with the same rules this repository uses.
 
-### `integration-tests` — Test d'integrazione con un database vero nel progetto generato
+### `integration-tests` — Integration tests against a real database in the generated project
 
 - **status**: open
 - **priority**: low
 - **labels**: enhancement, template
-- **milestone**: v1.1 — Pronto per la produzione
+- **milestone**: v1.1 — Production ready
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Lo store del modulo d'esempio testato contro MySQL (o PostgreSQL) con `testcontainers-go`, dietro un
-build tag `integration`, così `go test ./...` resta veloce e senza Docker.
+The example module's store tested against MySQL (or PostgreSQL) with `testcontainers-go`, behind an
+`integration` build tag, so `go test ./...` stays fast and Docker-free.
 
-### `toolchain-current` — Go 1.22 e `alpine:3.20` sono a fine vita: allineare a versioni supportate
+### `toolchain-current` — Go 1.22 and `alpine:3.20` are end of life: move to supported versions
 
 - **status**: open
 - **priority**: medium
 - **labels**: go, template, github_actions
-- **milestone**: v1.1 — Pronto per la produzione
+- **milestone**: v1.1 — Production ready
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Go 1.22 è fuori supporto da febbraio 2025; la matrice CI (1.22–1.24) è tutta fuori supporto; `alpine:3.20`
-lo è da aprile 2026. Allineare i 4 posti della versione Go (`go.mod`, `Dockerfile`, `template/Dockerfile`,
-matrice in `go.yml`) più `go.mod.tpl` e le immagini runtime, e insegnare a Renovate a leggere
-`go.mod.tpl` e i `Dockerfile` dentro `template/` (custom manager), altrimenti il drift torna.
+Go 1.22 is unsupported since February 2025; the CI matrix (1.22–1.24) is entirely unsupported;
+`alpine:3.20` is since April 2026. Align the 4 places of the Go version (`go.mod`, `Dockerfile`,
+`template/Dockerfile`, matrix in `go.yml`) plus `go.mod.tpl` and the runtime images, and teach Renovate
+to read `go.mod.tpl` and the `Dockerfile`s inside `template/` (custom manager), or the drift comes back.
 
-### `http-router-option` — Scelta del router: `--http fiber|std`
+### `http-router-option` — Router choice: `--http fiber|std`
 
 - **status**: open
 - **priority**: medium
 - **labels**: enhancement, go, template
-- **milestone**: v1.2 — Scelte di stack
+- **milestone**: v1.2 — Stack choices
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Dalla 1.22 il router di `net/http` gestisce metodi e parametri nel path: molti team preferiscono zero
-dipendenze. `--http std` genera handler e test con `net/http` e `httptest`. Valutare anche Fiber v3.
+Since 1.22 the `net/http` router handles methods and path parameters: many teams prefer zero
+dependencies. `--http std` generates handlers and tests with `net/http` and `httptest`. Evaluate Fiber v3 too.
 
-### `db-option` — Scelta del database: `--db mysql|postgres|none`
+### `db-option` — Database choice: `--db mysql|postgres|none`
 
 - **status**: open
 - **priority**: medium
 - **labels**: enhancement, go, template
-- **milestone**: v1.2 — Scelte di stack
+- **milestone**: v1.2 — Stack choices
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Oggi solo MySQL. `postgres` (driver `pgx`) e `none` (nessun livello database, per servizi stateless)
-cambiano `db.go`, compose, `.env.local` e lo store d'esempio. `make e2e` deve provare ogni combinazione.
+MySQL only today. `postgres` (`pgx` driver) and `none` (no database layer, for stateless services)
+change `db.go`, compose, `.env.local` and the example store. `make e2e` must exercise every combination.
 
-### `dry-run` — `--dry-run`: mostrare cosa verrà generato senza scrivere
+### `dry-run` — `--dry-run`: show what will be generated without writing
 
 - **status**: open
 - **priority**: low
 - **labels**: enhancement, go
-- **milestone**: v1.2 — Scelte di stack
+- **milestone**: v1.2 — Stack choices
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Elenco dei file con `Create`/`Skip`/`Overwrite` come farebbe il comando vero, exit 0, nessuna scrittura.
-Utile anche all'estensione VSCode per un'anteprima.
+The list of files with `Create`/`Skip`/`Overwrite` as the real command would print it, exit 0, no
+writes. Also useful to the VS Code extension for a preview.
 
-### `golden-tests` — Test golden dell'albero generato
+### `golden-tests` — Golden tests of the generated tree
 
 - **status**: open
 - **priority**: medium
 - **labels**: enhancement, go
-- **milestone**: Distribuzione e adozione
+- **milestone**: Distribution and adoption
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-`TestEmbeddedAssetsProduceTheDocumentedLayout` controlla i nomi dei file, non il contenuto. Un test
-golden (`testdata/golden/…`, aggiornabile con `-update`) fotografa il progetto generato completo: ogni
-modifica ai template si vede come diff nella PR. Una combinazione per ogni opzione di stack.
+`TestEmbeddedAssetsProduceTheDocumentedLayout` checks file names, not content. A golden test
+(`testdata/golden/…`, refreshed with `-update`) captures the whole generated project: every template
+change shows up as a diff in the PR. One combination per stack option.
 
-### `binary-name` — `go install` produce un binario `Go-DDD-Scaffold`, non `scaffold`
+### `binary-name` — `go install` produces a binary called `Go-DDD-Scaffold`, not `scaffold`
 
 - **status**: open
 - **priority**: medium
 - **labels**: enhancement, go
-- **milestone**: Distribuzione e adozione
+- **milestone**: Distribution and adoption
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-`main` sta alla radice del modulo, quindi il binario prende il nome del modulo. Spostare l'entrypoint in
-`cmd/scaffold/` (`go install github.com/Allan-Nava/Go-DDD-Scaffold/cmd/scaffold@latest`), tenendo un
-`main` alla radice per compatibilità per qualche versione; aggiornare la scoperta del binario
-nell'estensione VSCode.
+`main` sits at the module root, so the binary takes the module's name. Move the entrypoint to
+`cmd/scaffold/` (`go install github.com/Allan-Nava/Go-DDD-Scaffold/cmd/scaffold@latest`), keeping a root
+`main` for compatibility for a few versions; update binary discovery in the VS Code extension.
 
-### `goreleaser` — Release con GoReleaser: binari, checksum, SBOM, firma, Homebrew
+### `goreleaser` — Releases with GoReleaser: binaries, checksums, SBOM, signing, Homebrew
 
 - **status**: open
 - **priority**: medium
 - **labels**: enhancement, github_actions
-- **milestone**: Distribuzione e adozione
+- **milestone**: Distribution and adoption
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Sostituisce i due percorsi attuali (vedi `release-drop-thirdparty-action`) con uno solo, avviato dal
-**tag** e non da una release pubblicata a mano: oggi i tag arrivano a `v0.8.4` ma l'ultima GitHub
-Release è `v0.8.2`. Binari multi-piattaforma, checksum, SBOM, firma cosign, tap Homebrew.
+Replaces the two current paths (see `release-drop-thirdparty-action`) with one, started by the **tag**
+rather than by a release published by hand: today tags reach `v0.8.4` but the latest GitHub Release is
+`v0.8.2`. Multi-platform binaries, checksums, SBOM, cosign signature, Homebrew tap.
 
-### `product-readme` — README da prodotto: quickstart in 60 secondi, demo, confronto
+### `product-readme` — Product README: 60-second quickstart, demo, comparison
 
 - **status**: open
 - **priority**: medium
 - **labels**: documentation
-- **milestone**: Distribuzione e adozione
+- **milestone**: Distribution and adoption
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Il README spiega l'installazione ma non perché sceglierlo. Quickstart (`install → init → make run` in tre
-righe), una demo registrata (asciinema/GIF), l'albero generato, il confronto con gli alternativi
-(go-blueprint, `gonew`), e un repo d'esempio pubblico generato dalla CLI e aggiornato dalla CI.
+The README explains installation but not why to pick it. A quickstart (`install → init → make run` in
+three lines), a recorded demo (asciinema/GIF), the generated tree, a comparison with the alternatives
+(go-blueprint, `gonew`), and a public example repository generated by the CLI and refreshed by CI.
 
-### `community-files` — File per i contributori: CONTRIBUTING, SECURITY, template di issue, lingua unica
+### `community-files` — Contributor files: CONTRIBUTING, SECURITY, issue templates, English docs
 
 - **status**: open
 - **priority**: low
 - **labels**: documentation
-- **milestone**: Distribuzione e adozione
+- **milestone**: Distribution and adoption
 - **ref**: [audit-2026-11-06.md](audit-2026-11-06.md)
 
-Mancano `CONTRIBUTING.md`, `SECURITY.md`, template di issue e PR. README in inglese, backlog e audit in
-italiano: per un progetto open source scegliere una lingua per i documenti pubblici. Nel `Dockerfile`
-della CLI il `maintainer` è un indirizzo di lavoro: in un progetto personale va un indirizzo personale
-o il link al repo.
+`CONTRIBUTING.md`, `SECURITY.md`, issue and PR templates are missing. Public documentation is in
+**English**: the README is, the older backlog items and `audit-2026-08-11.md` are still in Italian and
+need translating. The CLI `Dockerfile` has a work address as `maintainer`: a personal project wants a
+personal address or the repository link.
 
 ## Storico (item chiusi)
 

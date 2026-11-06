@@ -20,17 +20,17 @@ _0 open · 1 done_
 |----|--------|----------|--------|
 | `audit-2026-08-11` | Audit 2026-08-11: risanamento del generatore (32 finding) | high | done |
 
-## Distribuzione e adozione
+## Distribution and adoption
 
 _5 open · 0 done_
 
 | id | Titolo | Priorità | Status |
 |----|--------|----------|--------|
-| `binary-name` | `go install` produce un binario `Go-DDD-Scaffold`, non `scaffold` | medium | open |
-| `golden-tests` | Test golden dell'albero generato | medium | open |
-| `goreleaser` | Release con GoReleaser: binari, checksum, SBOM, firma, Homebrew | medium | open |
-| `product-readme` | README da prodotto: quickstart in 60 secondi, demo, confronto | medium | open |
-| `community-files` | File per i contributori: CONTRIBUTING, SECURITY, template di issue, lingua unica | low | open |
+| `binary-name` | `go install` produces a binary called `Go-DDD-Scaffold`, not `scaffold` | medium | open |
+| `golden-tests` | Golden tests of the generated tree | medium | open |
+| `goreleaser` | Releases with GoReleaser: binaries, checksums, SBOM, signing, Homebrew | medium | open |
+| `product-readme` | Product README: 60-second quickstart, demo, comparison | medium | open |
+| `community-files` | Contributor files: CONTRIBUTING, SECURITY, issue templates, English docs | low | open |
 
 ## Estensione VSCode
 
@@ -62,56 +62,56 @@ _1 open · 1 done_
 | `config-yml-double-source` | `config/config.yml` non è letto: doppia fonte di configurazione | low | open |
 | `generated-project-has-no-tests` | Il progetto generato non contiene nessun test | medium | done |
 
-## v0.9 — Primo avvio senza intoppi
+## v0.9 — Smooth first run
 
 _9 open · 0 done_
 
 | id | Titolo | Priorità | Status |
 |----|--------|----------|--------|
-| `first-run-needs-mysql` | Il primo `make run` del progetto generato muore senza MySQL | high | open |
-| `module-path-dotted-dirs` | Module path sbagliato se il percorso contiene un segmento con un punto | high | open |
-| `project-name-validation` | Nomi di directory non validi producono un progetto rotto | high | open |
-| `atomic-file-writes` | `--force` può cancellare il file dell'utente; un flush fallito lascia file parziali | medium | open |
-| `cors-closed-by-default` | CORS aperto a tutti di default nel progetto generato | medium | open |
-| `generated-gitignore` | Il progetto generato non ha un `.gitignore` | medium | open |
-| `module-and-name-flags` | Mancano `--module` e `--name`: il path dedotto non si può correggere | medium | open |
-| `app-env-default-mismatch` | `APP_ENV` ha due default diversi nel progetto generato | low | open |
-| `unused-config-fields` | Configurazione dichiarata ma non usata (`LOG_LEVEL`, `RUNNING_MODE`, `API_SECRET`) | low | open |
+| `first-run-needs-mysql` | The generated project's first `make run` dies without MySQL | high | open |
+| `module-path-dotted-dirs` | Wrong module path when the path contains a segment with a dot | high | open |
+| `project-name-validation` | Invalid directory names produce a broken project | high | open |
+| `atomic-file-writes` | `--force` can delete the user's file; a failed flush leaves partial files | medium | open |
+| `cors-closed-by-default` | CORS open to everyone by default in the generated project | medium | open |
+| `generated-gitignore` | The generated project has no `.gitignore` | medium | open |
+| `module-and-name-flags` | No `--module` and `--name`: the inferred path cannot be corrected | medium | open |
+| `app-env-default-mismatch` | `APP_ENV` has two different defaults in the generated project | low | open |
+| `unused-config-fields` | Configuration declared but unused (`LOG_LEVEL`, `RUNNING_MODE`, `API_SECRET`) | low | open |
 
-## v1.0 — DDD vero nel progetto generato
+## v1.0 — Real DDD in the generated project
 
 _5 open · 0 done_
 
 | id | Titolo | Priorità | Status |
 |----|--------|----------|--------|
-| `ddd-layout-generated` | Il progetto generato non contiene nessun livello DDD | high | open |
-| `scaffold-add-module` | Comando `scaffold add module <nome>` per generare un nuovo bounded context | high | open |
-| `architecture-test` | Test d'architettura nel progetto generato: il dominio non importa l'infrastruttura | medium | open |
-| `ddd-guide-docs` | Guida al layout DDD generato: dove vanno le regole, modello anemico contro ricco | medium | open |
-| `di-wiring` | Dependency injection: composition root esplicito, Wire come opzione | low | open |
+| `ddd-layout-generated` | The generated project contains no DDD layer | high | open |
+| `scaffold-add-module` | `scaffold add module <name>` command to generate a new bounded context | high | open |
+| `architecture-test` | Architecture test in the generated project: the domain does not import infrastructure | medium | open |
+| `ddd-guide-docs` | Guide to the generated DDD layout: where the rules go, anemic vs rich model | medium | open |
+| `di-wiring` | Dependency injection: explicit composition root, Wire as an option | low | open |
 
-## v1.1 — Pronto per la produzione
+## v1.1 — Production ready
 
 _6 open · 0 done_
 
 | id | Titolo | Priorità | Status |
 |----|--------|----------|--------|
-| `db-migrations` | Migrazioni del database nel progetto generato | medium | open |
-| `generated-ci-and-lint` | CI e `golangci-lint` per il progetto generato | medium | open |
-| `health-readiness` | `/livez` e `/readyz`: oggi `/health` non controlla il database | medium | open |
-| `observability` | Osservabilità nel progetto generato: metriche, request id, tracing | medium | open |
-| `toolchain-current` | Go 1.22 e `alpine:3.20` sono a fine vita: allineare a versioni supportate | medium | open |
-| `integration-tests` | Test d'integrazione con un database vero nel progetto generato | low | open |
+| `db-migrations` | Database migrations in the generated project | medium | open |
+| `generated-ci-and-lint` | CI and `golangci-lint` for the generated project | medium | open |
+| `health-readiness` | `/livez` and `/readyz`: today `/health` does not check the database | medium | open |
+| `observability` | Observability in the generated project: metrics, request id, tracing | medium | open |
+| `toolchain-current` | Go 1.22 and `alpine:3.20` are end of life: move to supported versions | medium | open |
+| `integration-tests` | Integration tests against a real database in the generated project | low | open |
 
-## v1.2 — Scelte di stack
+## v1.2 — Stack choices
 
 _3 open · 0 done_
 
 | id | Titolo | Priorità | Status |
 |----|--------|----------|--------|
-| `db-option` | Scelta del database: `--db mysql\|postgres\|none` | medium | open |
-| `http-router-option` | Scelta del router: `--http fiber\|std` | medium | open |
-| `dry-run` | `--dry-run`: mostrare cosa verrà generato senza scrivere | low | open |
+| `db-option` | Database choice: `--db mysql\|postgres\|none` | medium | open |
+| `http-router-option` | Router choice: `--http fiber\|std` | medium | open |
+| `dry-run` | `--dry-run`: show what will be generated without writing | low | open |
 
 ## Non pianificati (senza milestone)
 
