@@ -9,7 +9,7 @@ import (
 // TestHealthEndpoint drives the router through app.Test, so it needs no port and
 // no database: it is the smoke test to keep green while you add routes.
 func TestHealthEndpoint(t *testing.T) {
-	app := newApp("{{.ProjectName}}-test")
+	app := newApp("{{.ProjectName}}-test", nil)
 
 	res, err := app.Test(httptest.NewRequest(http.MethodGet, "/health", nil))
 	if err != nil {
@@ -25,7 +25,7 @@ func TestHealthEndpoint(t *testing.T) {
 // TestUnknownRouteIs404 pins the default behaviour: a route that does not exist
 // must not be answered by a catch-all added by mistake.
 func TestUnknownRouteIs404(t *testing.T) {
-	app := newApp("{{.ProjectName}}-test")
+	app := newApp("{{.ProjectName}}-test", nil)
 
 	res, err := app.Test(httptest.NewRequest(http.MethodGet, "/does-not-exist", nil))
 	if err != nil {
@@ -35,5 +35,41 @@ func TestUnknownRouteIs404(t *testing.T) {
 
 	if res.StatusCode != http.StatusNotFound {
 		t.Errorf("GET /does-not-exist = %d, want %d", res.StatusCode, http.StatusNotFound)
+	}
+}
+
+// preflight sends the OPTIONS request a browser makes before a cross-origin call.
+func preflight(t *testing.T, allowed []string, origin string) *http.Response {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodOptions, "/health", nil)
+	req.Header.Set("Origin", origin)
+	req.Header.Set("Access-Control-Request-Method", http.MethodGet)
+
+	res, err := newApp("{{.ProjectName}}-test", allowed).Test(req)
+	if err != nil {
+		t.Fatalf("preflight failed: %v", err)
+	}
+	t.Cleanup(func() { res.Body.Close() })
+	return res
+}
+
+// CORS is closed by default: with no allowed origin, no browser origin is let in.
+func TestCORSIsClosedByDefault(t *testing.T) {
+	res := preflight(t, nil, "https://evil.example")
+
+	if got := res.Header.Get("Access-Control-Allow-Origin"); got != "" {
+		t.Errorf("Access-Control-Allow-Origin = %q, want none", got)
+	}
+}
+
+func TestCORSAllowsOnlyTheConfiguredOrigins(t *testing.T) {
+	allowed := []string{"https://app.example.com", " https://admin.example.com", ""}
+
+	if got := preflight(t, allowed, "https://admin.example.com").Header.Get("Access-Control-Allow-Origin"); got != "https://admin.example.com" {
+		t.Errorf("allowed origin: Access-Control-Allow-Origin = %q, want it echoed", got)
+	}
+	if got := preflight(t, allowed, "https://evil.example").Header.Get("Access-Control-Allow-Origin"); got != "" {
+		t.Errorf("other origin: Access-Control-Allow-Origin = %q, want none", got)
 	}
 }

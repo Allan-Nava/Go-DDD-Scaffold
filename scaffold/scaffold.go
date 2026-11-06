@@ -17,7 +17,6 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
-	"unicode"
 )
 
 const (
@@ -46,6 +45,12 @@ type Options struct {
 	Log io.Writer
 	// Debug turns on the internal trace output.
 	Debug bool
+	// Module is the Go module path written to go.mod. Empty means inferred
+	// from the destination (see ModulePath).
+	Module string
+	// Name is the project name (compose service, binary, README title). Empty
+	// means the destination directory name, normalised (see NormalizeName).
+	Name string
 }
 
 // Scaffold generates a project layout from the assets in its Options.
@@ -81,10 +86,11 @@ func (s *Scaffold) Generate(dest string) (Result, error) {
 		return Result{}, err
 	}
 
-	d := data{
-		AbsGenProjectPath: absDest,
-		ProjectName:       filepath.Base(absDest),
-		ProjectPath:       ModulePath(absDest),
+	d, err := s.projectData(absDest)
+	if err != nil {
+		// Nothing has been written yet: a bad name or module path is reported
+		// before the first file, not discovered when go.mod fails to parse.
+		return Result{}, err
 	}
 	s.debugf("generate dest=%s module=%s\n", absDest, d.ProjectPath)
 
@@ -101,6 +107,37 @@ func (s *Scaffold) Generate(dest string) (Result, error) {
 		}
 	}
 	return w.result, nil
+}
+
+// projectData resolves and validates the project name and module path.
+func (s *Scaffold) projectData(absDest string) (data, error) {
+	base := filepath.Base(absDest)
+
+	name := s.opts.Name
+	if name == "" {
+		name = NormalizeName(base)
+		if name == "" {
+			return data{}, fmt.Errorf("cannot derive a project name from %q: pass one with --name", base)
+		}
+	}
+	if err := checkName(name); err != nil {
+		return data{}, err
+	}
+
+	mod, inferred := s.opts.Module, s.opts.Module == ""
+	if inferred {
+		mod = ModulePath(absDest)
+		if mod == base {
+			// Nothing better than the directory name: use its normalised form,
+			// so "Service Name" gives the module "service-name".
+			mod = name
+		}
+	}
+	if err := checkModule(mod, inferred); err != nil {
+		return data{}, err
+	}
+
+	return data{AbsGenProjectPath: absDest, ProjectName: name, ProjectPath: mod}, nil
 }
 
 // render walks the template tree, parsing and executing each file in a single
@@ -178,6 +215,10 @@ type writer struct {
 
 // write streams fn's output into the file at rel. When the file already exists
 // and force is off, it records a skip and does not call fn.
+//
+// The content goes to a temporary file in the same directory first, and reaches
+// rel only once it is complete: a failed render or flush never truncates, deletes
+// or half-writes the destination, with or without force.
 func (w *writer) write(rel string, fn func(io.Writer) error) error {
 	abs := filepath.Join(w.root, filepath.FromSlash(rel))
 
@@ -189,35 +230,30 @@ func (w *writer) write(rel string, fn func(io.Writer) error) error {
 		w.dirs[dir] = struct{}{}
 	}
 
-	// O_EXCL makes "skip if it exists" atomic, with no extra stat call.
-	flag := os.O_WRONLY | os.O_CREATE | os.O_EXCL
-	if w.force {
-		flag = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
-	}
-	f, err := os.OpenFile(abs, flag, filePerm)
-	if err != nil {
-		if !w.force && errors.Is(err, fs.ErrExist) {
-			w.result.Skipped = append(w.result.Skipped, rel)
-			_, _ = fmt.Fprintf(w.log, "Skip   %s (already exists, use --force to overwrite)\n", rel)
+	if !w.force {
+		if _, err := os.Lstat(abs); err == nil {
+			w.skip(rel)
 			return nil
 		}
-		return err
 	}
 
-	buf := bufio.NewWriter(f)
-	if err := fn(buf); err != nil {
-		// The write error is what we report; closing and removing are best-effort
-		// cleanup so a half-written source file never survives.
-		_ = f.Close()
-		_ = os.Remove(abs)
+	tmp, err := w.writeTemp(dir, rel, fn)
+	if err != nil {
+		return err
+	}
+	// Removing an already-renamed temp file fails harmlessly.
+	defer func() { _ = os.Remove(tmp) }()
+
+	if w.force {
+		if err := os.Rename(tmp, abs); err != nil {
+			return fmt.Errorf("write %s: %w", rel, err)
+		}
+	} else if err := publishExclusive(tmp, abs); err != nil {
+		if errors.Is(err, fs.ErrExist) {
+			w.skip(rel) // created by someone else since the Lstat above
+			return nil
+		}
 		return fmt.Errorf("write %s: %w", rel, err)
-	}
-	if err := buf.Flush(); err != nil {
-		_ = f.Close()
-		return fmt.Errorf("flush %s: %w", rel, err)
-	}
-	if err := f.Close(); err != nil {
-		return fmt.Errorf("close %s: %w", rel, err)
 	}
 
 	w.result.Created = append(w.result.Created, rel)
@@ -225,37 +261,53 @@ func (w *writer) write(rel string, fn func(io.Writer) error) error {
 	return nil
 }
 
-// ModulePath guesses a Go module path for a project directory: the first path
-// segment that looks like a host (github.com, gitlab.com, …) starts the path.
-// It falls back to the legacy "…/src/<path>" layout, then to the bare
-// directory name.
-func ModulePath(absDir string) string {
-	segs := strings.Split(filepath.ToSlash(absDir), "/")
+// writeTemp writes fn's output to a new temporary file in dir and returns its
+// path. On any error the temporary file is removed.
+func (w *writer) writeTemp(dir, rel string, fn func(io.Writer) error) (string, error) {
+	f, err := os.CreateTemp(dir, ".scaffold-*.tmp")
+	if err != nil {
+		return "", err
+	}
+	tmp := f.Name()
+	fail := func(step string, err error) (string, error) {
+		_ = f.Close()
+		_ = os.Remove(tmp)
+		return "", fmt.Errorf("%s %s: %w", step, rel, err)
+	}
 
-	for i, seg := range segs {
-		if i < len(segs)-1 && looksLikeHost(seg) {
-			return strings.Join(segs[i:], "/")
-		}
+	buf := bufio.NewWriter(f)
+	if err := fn(buf); err != nil {
+		return fail("write", err)
 	}
-	for i := len(segs) - 2; i > 0; i-- {
-		if segs[i] == "src" {
-			return strings.Join(segs[i+1:], "/")
-		}
+	if err := buf.Flush(); err != nil {
+		return fail("flush", err)
 	}
-	return segs[len(segs)-1]
+	// CreateTemp uses 0600: the generated files are ordinary sources.
+	if err := f.Chmod(filePerm); err != nil {
+		return fail("chmod", err)
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(tmp)
+		return "", fmt.Errorf("close %s: %w", rel, err)
+	}
+	return tmp, nil
 }
 
-// looksLikeHost reports whether seg could be a module host, ie. "name.tld"
-// with an alphabetic tld. Dot-prefixed directories such as ".config" are not.
-func looksLikeHost(seg string) bool {
-	dot := strings.LastIndex(seg, ".")
-	if dot < 1 || dot == len(seg)-1 {
-		return false
+// publishExclusive moves tmp to abs only if abs does not exist. A hard link is
+// the atomic "create if absent"; on a filesystem without hard links it falls
+// back to a rename after a fresh existence check.
+func publishExclusive(tmp, abs string) error {
+	err := os.Link(tmp, abs)
+	if err == nil || errors.Is(err, fs.ErrExist) {
+		return err
 	}
-	for _, r := range seg[dot+1:] {
-		if !unicode.IsLetter(r) {
-			return false
-		}
+	if _, statErr := os.Lstat(abs); statErr == nil {
+		return fs.ErrExist
 	}
-	return len(seg)-dot-1 >= 2
+	return os.Rename(tmp, abs)
+}
+
+func (w *writer) skip(rel string) {
+	w.result.Skipped = append(w.result.Skipped, rel)
+	_, _ = fmt.Fprintf(w.log, "Skip   %s (already exists, use --force to overwrite)\n", rel)
 }

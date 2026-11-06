@@ -142,14 +142,30 @@ export function parseVersion(versionOutput: string): string {
 	return line.slice(VERSION_PREFIX.length).trim() || "unknown";
 }
 
+/** InitOptions are the optional flags of `scaffold init`. An empty module or
+ * name is not passed: the CLI infers it (git origin remote, folder path). */
+export interface InitOptions {
+	force?: boolean;
+	module?: string;
+	name?: string;
+}
+
 /** buildInitArgs assembles the argv for a generation run. */
 export function buildInitArgs(
 	targetDir: string,
-	options: { force?: boolean } = {},
+	options: InitOptions = {},
 ): string[] {
 	const args = ["init"];
 	if (options.force) {
 		args.push("--force");
+	}
+	const module = options.module?.trim();
+	if (module) {
+		args.push("--module", module);
+	}
+	const name = options.name?.trim();
+	if (name) {
+		args.push("--name", name);
 	}
 	// The directory is passed explicitly instead of relying on a working
 	// directory: the CLI defaults to its own cwd, which is not the folder the
@@ -256,7 +272,7 @@ export async function locateBinary(
 export async function runInit(
 	command: string,
 	targetDir: string,
-	options: { force?: boolean } = {},
+	options: InitOptions = {},
 	exec: Exec = defaultExec,
 ): Promise<{ result: GenerationResult; output: string }> {
 	const args = buildInitArgs(targetDir, options);

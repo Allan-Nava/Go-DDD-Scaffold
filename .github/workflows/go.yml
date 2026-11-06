@@ -63,7 +63,7 @@ jobs:
         with:
           go-version: '1.22.x'
           cache: true
-      # v9: la v6 supporta solo golangci-lint v1 e rifiuta la nostra config v2
+      # v9: v6 only supports golangci-lint v1 and rejects our v2 config
       # ("golangci-lint v2 is not supported by golangci-lint-action v6").
       - uses: golangci/golangci-lint-action@v9
         with:
@@ -134,12 +134,14 @@ jobs:
         working-directory: /tmp/gen/github.com/acme/myservice
         run: go test ./...
 
-      - name: Smoke test the health endpoint
+      # Started exactly like `make run` does: APP_ENV=local loads env/.env.local,
+      # with no DB_HOST override and no MySQL on the runner. This is the path a
+      # user takes first; the old smoke test used APP_ENV=runner and skipped it.
+      - name: Smoke test the health endpoint (like make run)
         working-directory: /tmp/gen/github.com/acme/myservice
         env:
           HTTP_ADDR: 127.0.0.1:18080
-          APP_ENV: runner
-          DB_HOST: ""
+          APP_ENV: local
         run: |
           go build -o /tmp/svc ./cmd
           /tmp/svc & pid=$!

@@ -52,6 +52,15 @@ func initCommand() *cli.Command {
 				Aliases: []string{"f"},
 				Usage:   "overwrite files that already exist",
 			},
+			&cli.StringFlag{
+				Name:    "module",
+				Aliases: []string{"m"},
+				Usage:   "Go module path for go.mod (default: the git origin remote, else inferred from the directory)",
+			},
+			&cli.StringFlag{
+				Name:  "name",
+				Usage: "project name for the binary, the compose service and the README (default: the directory name, lowercased)",
+			},
 			&cli.BoolFlag{
 				Name:  "debug",
 				Usage: "trace what the generator is doing",
@@ -82,6 +91,8 @@ func initCommand() *cli.Command {
 				Static:    static,
 				Force:     c.Bool("force"),
 				Debug:     c.Bool("debug"),
+				Module:    c.String("module"),
+				Name:      c.String("name"),
 			}).Generate(dest)
 			if err != nil {
 				return err

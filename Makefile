@@ -32,8 +32,10 @@ check:
 lint:
 	golangci-lint run ./...
 
-# Generates a project in a throwaway directory and compiles it for real: the
-# only gate that proves the templates still emit buildable Go.
+# Generates a project in a throwaway directory, compiles it for real, then starts
+# it the way `make run` does (APP_ENV=local, so env/.env.local is loaded) and
+# checks /health: the only gate that proves the templates emit a service that
+# builds *and* starts on a machine with no MySQL.
 .PHONY: e2e
 e2e: build
 	@set -eu; \
@@ -41,7 +43,13 @@ e2e: build
 	mkdir -p $$dir; \
 	cd $$dir && $(CURDIR)/bin/scaffold init && \
 	go mod tidy && go build ./... && go vet ./... && test -z "$$(gofmt -l .)" && \
-	go test ./...; \
+	go test ./... && \
+	go build -o $$dir/bin/svc ./cmd && \
+	{ APP_ENV=local HTTP_ADDR=127.0.0.1:18080 $$dir/bin/svc >$$dir/svc.log 2>&1 & pid=$$!; \
+	  ok=; for _ in 1 2 3 4 5 6 7 8 9 10; do \
+	    curl -fsS --max-time 2 -o /dev/null http://127.0.0.1:18080/health && { ok=1; break; }; sleep 1; \
+	  done; kill -TERM $$pid; wait $$pid || true; \
+	  test -n "$$ok" || { echo "health check failed:"; cat $$dir/svc.log; exit 1; }; }; \
 	echo "e2e OK: $$dir"
 
 .PHONY: docker

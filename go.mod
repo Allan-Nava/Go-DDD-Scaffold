@@ -1,10 +1,11 @@
 module github.com/Allan-Nava/Go-DDD-Scaffold
 
-go 1.22
+go 1.22.0
 
 require (
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v2 v2.27.7
+	golang.org/x/mod v0.22.0
 )
 
 require (

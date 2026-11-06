@@ -4,16 +4,25 @@ import (
 	"testing"
 
 	goenv "github.com/caarlos0/env/v11"
+	"go.uber.org/zap/zapcore"
 )
 
 // parse builds a Configuration from an explicit environment map instead of the
 // process environment, so these tests are hermetic: the shell that runs them
 // cannot make them pass or fail.
-func parse(t *testing.T, environment map[string]string) Configuration {
+func parse(t *testing.T, environment map[string]string) (Configuration, error) {
 	t.Helper()
 
 	cfg := Configuration{}
-	if err := goenv.ParseWithOptions(&cfg, goenv.Options{Environment: environment}); err != nil {
+	err := goenv.ParseWithOptions(&cfg, goenv.Options{Environment: environment})
+	return cfg, err
+}
+
+func mustParse(t *testing.T, environment map[string]string) Configuration {
+	t.Helper()
+
+	cfg, err := parse(t, environment)
+	if err != nil {
 		t.Fatalf("parse environment: %v", err)
 	}
 	return cfg
@@ -22,7 +31,7 @@ func parse(t *testing.T, environment map[string]string) Configuration {
 // The envDefault tags are what keeps `make run` working with no configuration at
 // all. They break silently, so they are pinned here.
 func TestConfigurationDefaults(t *testing.T) {
-	cfg := parse(t, map[string]string{})
+	cfg := mustParse(t, map[string]string{})
 
 	for _, tc := range []struct {
 		field string
@@ -30,8 +39,7 @@ func TestConfigurationDefaults(t *testing.T) {
 		want  any
 	}{
 		{"AppEnv", cfg.AppEnv, "local"},
-		{"LogLevel", cfg.LogLevel, "debug"},
-		{"RunningMode", cfg.RunningMode, "main"},
+		{"LogLevel", cfg.LogLevel, zapcore.InfoLevel},
 		{"HTTPAddr", cfg.HTTPAddr, "0.0.0.0:8080"},
 		{"DBPort", cfg.DBPort, "3306"},
 		{"DBIdleConn", cfg.DBIdleConn, 10},
@@ -46,25 +54,50 @@ func TestConfigurationDefaults(t *testing.T) {
 	if cfg.DBHost != "" {
 		t.Errorf("DBHost = %q, want empty by default", cfg.DBHost)
 	}
+	// Closed by default: no browser origin may call the API until one is listed.
+	if len(cfg.CORSAllowedOrigins) != 0 {
+		t.Errorf("CORSAllowedOrigins = %q, want none by default", cfg.CORSAllowedOrigins)
+	}
+}
+
+// The default APP_ENV must also pick the dotenv file: an unset APP_ENV used to
+// say "local" in the configuration while loading no .env.local at all.
+func TestDefaultAppEnvLoadsTheLocalDotenvFile(t *testing.T) {
+	cfg := mustParse(t, map[string]string{})
+
+	if got, want := dotenvFile(cfg.AppEnv), "./env/.env.local"; got != want {
+		t.Errorf("dotenvFile(default APP_ENV) = %q, want %q", got, want)
+	}
+	if got, want := dotenvFile("runner"), ".env"; got != want {
+		t.Errorf("dotenvFile(unknown APP_ENV) = %q, want %q", got, want)
+	}
 }
 
 func TestConfigurationReadsTheEnvironment(t *testing.T) {
-	cfg := parse(t, map[string]string{
-		"APP_ENV":      "prod",
-		"HTTP_ADDR":    "127.0.0.1:9000",
-		"DB_HOST":      "db.internal",
-		"DB_NAME":      "orders",
-		"DB_USERNAME":  "svc",
-		"DB_PASSWORD":  "secret",
-		"DB_MAX_CONN":  "7",
-		"DB_IDLE_CONN": "3",
+	cfg := mustParse(t, map[string]string{
+		"APP_ENV":              "prod",
+		"LOG_LEVEL":            "warn",
+		"HTTP_ADDR":            "127.0.0.1:9000",
+		"CORS_ALLOWED_ORIGINS": "https://app.example.com,https://admin.example.com",
+		"DB_HOST":              "db.internal",
+		"DB_NAME":              "orders",
+		"DB_USERNAME":          "svc",
+		"DB_PASSWORD":          "secret",
+		"DB_MAX_CONN":          "7",
+		"DB_IDLE_CONN":         "3",
 	})
 
 	if cfg.AppEnv != "prod" {
 		t.Errorf("AppEnv = %q, want %q", cfg.AppEnv, "prod")
 	}
+	if cfg.LogLevel != zapcore.WarnLevel {
+		t.Errorf("LogLevel = %v, want %v", cfg.LogLevel, zapcore.WarnLevel)
+	}
 	if cfg.HTTPAddr != "127.0.0.1:9000" {
 		t.Errorf("HTTPAddr = %q, want %q", cfg.HTTPAddr, "127.0.0.1:9000")
+	}
+	if len(cfg.CORSAllowedOrigins) != 2 || cfg.CORSAllowedOrigins[1] != "https://admin.example.com" {
+		t.Errorf("CORSAllowedOrigins = %q, want the two listed origins", cfg.CORSAllowedOrigins)
 	}
 	if cfg.DBHost != "db.internal" {
 		t.Errorf("DBHost = %q, want %q", cfg.DBHost, "db.internal")
@@ -72,5 +105,12 @@ func TestConfigurationReadsTheEnvironment(t *testing.T) {
 	// The pool sizes are ints: a typo in the tag would silently leave them at 0.
 	if cfg.DBMaxConn != 7 || cfg.DBIdleConn != 3 {
 		t.Errorf("pool = idle %d / max %d, want 3 / 7", cfg.DBIdleConn, cfg.DBMaxConn)
+	}
+}
+
+// A typo in LOG_LEVEL must stop the service at startup, not be ignored.
+func TestInvalidLogLevelIsAnError(t *testing.T) {
+	if _, err := parse(t, map[string]string{"LOG_LEVEL": "verbose"}); err == nil {
+		t.Error("LOG_LEVEL=verbose parsed without error")
 	}
 }

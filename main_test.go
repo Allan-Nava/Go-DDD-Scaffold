@@ -45,6 +45,7 @@ func TestEmbeddedAssetsProduceTheDocumentedLayout(t *testing.T) {
 
 	assert.ElementsMatch(t, []string{
 		".dockerignore",
+		".gitignore",
 		"Dockerfile",
 		"Makefile",
 		"README.md",
@@ -92,7 +93,7 @@ func TestNoUnrenderedPlaceholdersInRenderedFiles(t *testing.T) {
 	dest, res := generateFromEmbeddedAssets(t)
 
 	// static/ is copied verbatim, so a literal "{{" there is legitimate.
-	raw := map[string]bool{".dockerignore": true, "Makefile": true, "config/config.yml": true}
+	raw := map[string]bool{".dockerignore": true, ".gitignore": true, "Makefile": true, "config/config.yml": true}
 
 	for _, rel := range res.Created {
 		if raw[rel] {
@@ -112,4 +113,31 @@ func TestGeneratedModulePathMatchesTheDestination(t *testing.T) {
 
 	assert.Contains(t, string(gomod), "module github.com/acme/myservice")
 	assert.NotContains(t, string(gomod), "TODO/", "the module path placeholder is gone")
+}
+
+// The first `make run` loads env/.env.local: it must not point at a database
+// that a fresh machine does not have.
+func TestLocalDotenvStartsWithoutADatabase(t *testing.T) {
+	dest, _ := generateFromEmbeddedAssets(t)
+
+	dotenv, err := os.ReadFile(filepath.Join(dest, "env", ".env.local"))
+	require.NoError(t, err)
+
+	assert.Regexp(t, `(?m)^DB_HOST=$`, string(dotenv))
+	assert.Regexp(t, `(?m)^CORS_ALLOWED_ORIGINS=$`, string(dotenv))
+	assert.NotContains(t, string(dotenv), "API_SECRET", "unused settings are gone")
+	assert.NotContains(t, string(dotenv), "RUNNING_MODE", "unused settings are gone")
+}
+
+// The generated .gitignore keeps the build output and the dotenv credentials out
+// of the first `git add .`.
+func TestGeneratedGitignoreCoversSecretsAndBuildOutput(t *testing.T) {
+	dest, _ := generateFromEmbeddedAssets(t)
+
+	gitignore, err := os.ReadFile(filepath.Join(dest, ".gitignore"))
+	require.NoError(t, err)
+
+	for _, pattern := range []string{"bin/", "env/.env.*", "!env/.env.example"} {
+		assert.Contains(t, string(gitignore), pattern+"\n")
+	}
 }

@@ -4,6 +4,7 @@ package main
 import (
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -21,7 +22,11 @@ const shutdownTimeout = 10 * time.Second
 
 // newApp builds the router and its middlewares. It is separate from main so the
 // tests can drive it through app.Test, with no port to bind and no database.
-func newApp(name string) *fiber.App {
+//
+// allowedOrigins are the browser origins that may call the API cross-origin.
+// None (the default) installs no CORS middleware: browsers then block every
+// cross-origin call, which is the safe starting point for a new service.
+func newApp(name string, allowedOrigins []string) *fiber.App {
 	app := fiber.New(fiber.Config{
 		AppName:               name,
 		DisableStartupMessage: true,
@@ -31,11 +36,13 @@ func newApp(name string) *fiber.App {
 	// recover first, so a panic in any later middleware is still caught.
 	app.Use(recover.New())
 	app.Use(logger.New())
-	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowHeaders: "Content-Type, Authorization",
-		AllowMethods: "GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE",
-	}))
+	if origins := cleanOrigins(allowedOrigins); len(origins) > 0 {
+		app.Use(cors.New(cors.Config{
+			AllowOrigins: strings.Join(origins, ","),
+			AllowHeaders: "Content-Type, Authorization",
+			AllowMethods: "GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE",
+		}))
+	}
 
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusOK)
@@ -44,16 +51,32 @@ func newApp(name string) *fiber.App {
 	return app
 }
 
+// cleanOrigins drops the blanks a "a, b," list leaves behind.
+func cleanOrigins(origins []string) []string {
+	out := make([]string, 0, len(origins))
+	for _, o := range origins {
+		if o = strings.TrimSpace(o); o != "" {
+			out = append(out, o)
+		}
+	}
+	return out
+}
+
 func main() {
-	log := zap.Must(zap.NewProduction()).Sugar()
+	// Info until the configuration is loaded, then LOG_LEVEL.
+	level := zap.NewAtomicLevel()
+	zcfg := zap.NewProductionConfig()
+	zcfg.Level = level
+	log := zap.Must(zcfg.Build()).Sugar()
 	defer log.Sync() //nolint:errcheck // nothing useful to do on a failed flush
 
 	cfg, err := env.GetEnvConfig(log)
 	if err != nil {
 		log.Fatalw("cannot load the configuration", "err", err)
 	}
+	level.SetLevel(cfg.LogLevel)
 
-	app := newApp("{{.ProjectName}}")
+	app := newApp("{{.ProjectName}}", cfg.CORSAllowedOrigins)
 
 	// The database is optional, so a freshly generated project runs without one.
 	if cfg.DBHost != "" {

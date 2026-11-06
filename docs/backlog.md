@@ -168,7 +168,7 @@ Full plan and reasoning: [audit-2026-11-06.md](audit-2026-11-06.md).
 
 ### `first-run-needs-mysql` — The generated project's first `make run` dies without MySQL
 
-- **status**: open
+- **status**: done
 - **priority**: high
 - **labels**: bug, template
 - **milestone**: v0.9 — Smooth first run
@@ -180,12 +180,14 @@ opposite ("listens on :8080", "starts without a database when `DB_HOST` is empty
 
 CI does not see it: the smoke test runs with `APP_ENV: runner`, i.e. without the dotenv file.
 
-- [ ] empty `DB_HOST` in `.env.local` (the database comes up with `make up`), or a README that matches
-- [ ] the CI smoke test and `make e2e` run with `APP_ENV=local`, like a user
+- [x] empty `DB_HOST` in `.env.local` (the database comes up with `make up`), or a README that matches
+- [x] the CI smoke test and `make e2e` run with `APP_ENV=local`, like a user
+
+**Closed in v0.9.0**: `env/.env.local` leaves `DB_HOST` empty (with a comment on `make up` and `DB_HOST=localhost`). The CI smoke test runs with `APP_ENV=local` and no `DB_HOST` override, and `make e2e` now also starts the service that way and checks `/health`.
 
 ### `module-path-dotted-dirs` — Wrong module path when the path contains a segment with a dot
 
-- **status**: open
+- **status**: done
 - **priority**: high
 - **labels**: bug, go
 - **milestone**: v0.9 — Smooth first run
@@ -194,13 +196,15 @@ CI does not see it: the smoke test runs with `APP_ENV: runner`, i.e. without the
 `ModulePath` takes the first "host-like" segment: `/Users/john.doe/code/svc` → `module john.doe/code/svc`.
 It hits every user whose username is `first.last` (common on macOS and Windows).
 
-- [ ] recognise as a host only known domains (`github.com`, `gitlab.com`, `bitbucket.org`, …) or a
+- [x] recognise as a host only known domains (`github.com`, `gitlab.com`, `bitbucket.org`, …) or a
       segment followed by at least an owner and a repo, or read the git `origin` remote when present
-- [ ] regression test with `/Users/john.doe/…`
+- [x] regression test with `/Users/john.doe/…`
+
+**Closed in v0.9.0**: `ModulePath` now tries, in order: the git `origin` remote (read from `.git/config`, no `git` binary needed; a subfolder keeps its relative path), a **known** code host in the path, the legacy `src/` layout, the directory name. `/Users/john.doe/code/svc` → `svc`; regression tests for the macOS and Windows cases and for the remote URL formats (scp-like, https with credentials, ssh with port).
 
 ### `module-and-name-flags` — No `--module` and `--name`: the inferred path cannot be corrected
 
-- **status**: open
+- **status**: done
 - **priority**: medium
 - **labels**: enhancement, go
 - **milestone**: v0.9 — Smooth first run
@@ -210,9 +214,11 @@ When inference is wrong (see `module-path-dotted-dirs`) the only way out is edit
 import by hand. `scaffold init --module github.com/acme/svc --name svc` turns inference into a default,
 not a constraint. Propagate it to the VS Code extension (argv in `cli.ts`).
 
+**Closed in v0.9.0**: `scaffold init --module/-m <path> --name <name>`. The VS Code extension asks for the module path (empty = inferred) and passes `--module`; `buildInitArgs` accepts both (extension 0.2.0).
+
 ### `project-name-validation` — Invalid directory names produce a broken project
 
-- **status**: open
+- **status**: done
 - **priority**: high
 - **labels**: bug, template
 - **milestone**: v0.9 — Smooth first run
@@ -221,12 +227,14 @@ not a constraint. Propagate it to the VS Code extension (argv in `cli.ts`).
 The directory name ends up unchecked in `go.mod`, in the `docker-compose.yml` service and in the
 `Dockerfile` binary name: `/work/Service Name` → `module Service Name` (invalid).
 
-- [ ] validate the module path (`golang.org/x/mod/module.CheckPath`) and the name; clear error before writing
-- [ ] normalise the name for compose and the binary (lowercase, `-` instead of spaces)
+- [x] validate the module path (`golang.org/x/mod/module.CheckPath`) and the name; clear error before writing
+- [x] normalise the name for compose and the binary (lowercase, `-` instead of spaces)
+
+**Closed in v0.9.0**: The name is normalised (`Service Name` → `service-name`) and validated against what compose accepts; an explicit `--name` must already be valid. The module path is checked with `golang.org/x/mod/module.CheckImportPath`. Both are validated **before** the first file is written: on error the destination is not even created.
 
 ### `atomic-file-writes` — `--force` can delete the user's file; a failed flush leaves partial files
 
-- **status**: open
+- **status**: done
 - **priority**: medium
 - **labels**: bug, go
 - **milestone**: v0.9 — Smooth first run
@@ -235,12 +243,14 @@ The directory name ends up unchecked in `go.mod`, in the `docker-compose.yml` se
 With `--force` the file is opened with `O_TRUNC`; if rendering fails, the error path calls `os.Remove`:
 the original file is truncated first and then deleted. A `Flush` error leaves a partial file instead.
 
-- [ ] write to a temporary file in the same directory, `rename` only after a successful write
-- [ ] test with an `fs.FS` that fails halfway, with and without `--force`
+- [x] write to a temporary file in the same directory, `rename` only after a successful write
+- [x] test with an `fs.FS` that fails halfway, with and without `--force`
+
+**Closed in v0.9.0**: Every file is written to a temporary file in the same directory and moved into place only when complete: `rename` with `--force`, a hard link (atomic "create if absent") without it, falling back to a rename after a fresh check on filesystems without hard links. Tested with a template that fails halfway and an `fs.FS` whose `Read` fails halfway, with and without `--force`: the existing file survives byte for byte and no temporary file is left behind.
 
 ### `app-env-default-mismatch` — `APP_ENV` has two different defaults in the generated project
 
-- **status**: open
+- **status**: done
 - **priority**: low
 - **labels**: bug, template
 - **milestone**: v0.9 — Smooth first run
@@ -249,9 +259,11 @@ the original file is truncated first and then deleted. A `Flush` error leaves a 
 `Configuration.AppEnv` has `envDefault:"local"`, but `loadDotEnv` reads `os.Getenv("APP_ENV")`: without
 the variable the configuration says `local` but `.env.local` is not loaded. One default, in one place.
 
+**Closed in v0.9.0**: `GetEnvConfig` parses the environment first, so `APP_ENV` takes its default from the struct tag only, then loads `dotenvFile(cfg.AppEnv)` and parses again. Without `APP_ENV` the service now loads `env/.env.local` (verified by starting it).
+
 ### `generated-gitignore` — The generated project has no `.gitignore`
 
-- **status**: open
+- **status**: done
 - **priority**: medium
 - **labels**: enhancement, template
 - **milestone**: v0.9 — Smooth first run
@@ -260,9 +272,11 @@ the variable the configuration says `local` but `.env.local` is not loaded. One 
 The first `git add .` commits `bin/` and `env/.env.local` (with `API_SECRET` and the DB password).
 Generate a `.gitignore` (in `static/`) with `bin/`, `env/.env.*` except an `.env.example`, `*.test`, `*.out`.
 
+**Closed in v0.9.0**: `static/.gitignore`: `bin/`, `*.test`, `*.out`, `coverage.*`, `env/.env.*` except `!env/.env.example`, `.env`, editor and OS files. Pinned by `TestGeneratedGitignoreCoversSecretsAndBuildOutput`.
+
 ### `cors-closed-by-default` — CORS open to everyone by default in the generated project
 
-- **status**: open
+- **status**: done
 - **priority**: medium
 - **labels**: security, template
 - **milestone**: v0.9 — Smooth first run
@@ -271,9 +285,11 @@ Generate a `.gitignore` (in `static/`) with `bin/`, `env/.env.*` except an `.env
 `AllowOrigins: "*"` with `Authorization` among the headers: a new service's default must be closed.
 `CORS_ALLOWED_ORIGINS` from the environment, empty = no external origin, with a test.
 
+**Closed in v0.9.0**: `CORS_ALLOWED_ORIGINS` (comma-separated, `[]string` in the configuration). Empty installs no CORS middleware: a cross-origin preflight gets no `Access-Control-Allow-Origin`. Two tests in the generated `cmd/main_test.go` pin both cases.
+
 ### `unused-config-fields` — Configuration declared but unused (`LOG_LEVEL`, `RUNNING_MODE`, `API_SECRET`)
 
-- **status**: open
+- **status**: done
 - **priority**: low
 - **labels**: enhancement, template
 - **milestone**: v0.9 — Smooth first run
@@ -282,6 +298,8 @@ Generate a `.gitignore` (in `static/`) with `bin/`, `env/.env.*` except an `.env
 `LOG_LEVEL` changes nothing (`zap.NewProduction()` is always at `info`); `RUNNING_MODE` and `API_SECRET`
 are read by no code. Wire `LOG_LEVEL` to the logger and remove the other two (or actually use them).
 To be decided together with `config-yml-double-source`.
+
+**Closed in v0.9.0**: `LOG_LEVEL` is a `zapcore.Level` (default `info`, `debug` in `.env.local`): an invalid value stops the service at startup, and the logger is built on an `AtomicLevel` set from it once the configuration is loaded. `RUNNING_MODE` and `API_SECRET` were removed. `config/config.yml` stays for `config-yml-double-source`.
 
 ### `ddd-layout-generated` — The generated project contains no DDD layer
 

@@ -4,7 +4,16 @@ All notable changes to the "go-ddd-scaffold" extension will be documented in thi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
+## [0.2.0]
+
+### Added
+
+- The command asks for the **Go module path** before generating. Leave it empty to
+  keep the CLI's inference (the git `origin` remote, else a known host in the
+  folder path, else the folder name); a value is passed as `scaffold init --module`.
+  Needs CLI v0.9.0 or later.
+
+## [0.1.0]
 
 ### Changed
 

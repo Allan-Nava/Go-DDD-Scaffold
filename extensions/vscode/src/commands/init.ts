@@ -30,6 +30,11 @@ export async function newScaffoldProject(
 		return;
 	}
 
+	const module = await askModulePath();
+	if (module === undefined) {
+		return; // Escape cancels; an empty answer means "infer it"
+	}
+
 	const configured = vscode.workspace
 		.getConfiguration(CONFIG_SECTION)
 		.get<string>("binaryPath", "");
@@ -44,7 +49,7 @@ export async function newScaffoldProject(
 				title: "Generating the Go DDD project layout…",
 				cancellable: false,
 			},
-			() => runInit(command, targetDir, { force }),
+			() => runInit(command, targetDir, { force, module }),
 		);
 
 		output.append(cliOutput);
@@ -80,6 +85,22 @@ async function resolveTargetDir(uri?: vscode.Uri): Promise<string | undefined> {
 		title: "Select the folder for the new Go DDD project",
 	});
 	return chosen?.[0]?.fsPath;
+}
+
+/**
+ * askModulePath asks for the Go module path. Empty keeps the CLI's inference
+ * (the git origin remote, else a known host in the folder path, else the folder
+ * name); undefined means the user cancelled.
+ */
+async function askModulePath(): Promise<string | undefined> {
+	return vscode.window.showInputBox({
+		title: "Go module path",
+		prompt: "Leave empty to infer it from the git origin remote or the folder path.",
+		placeHolder: "github.com/acme/my-service",
+		ignoreFocusOut: true,
+		validateInput: (value) =>
+			/\s/.test(value.trim()) ? "A module path cannot contain spaces." : undefined,
+	});
 }
 
 /**

@@ -66,6 +66,18 @@ test("buildInitArgs always passes the directory explicitly", () => {
 	]);
 });
 
+test("buildInitArgs passes --module and --name only when they are set", () => {
+	assert.deepEqual(
+		buildInitArgs("/tmp/svc", { module: " github.com/acme/svc ", name: "svc" }),
+		["init", "--module", "github.com/acme/svc", "--name", "svc", "/tmp/svc"],
+	);
+	// Empty means "let the CLI infer it", not an empty flag value.
+	assert.deepEqual(buildInitArgs("/tmp/svc", { module: "  ", name: "" }), [
+		"init",
+		"/tmp/svc",
+	]);
+});
+
 test("goBinDirs prefers GOBIN, then every GOPATH entry, then ~/go/bin", () => {
 	const dirs = goBinDirs(
 		{
