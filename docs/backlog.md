@@ -129,7 +129,7 @@ In entrambi i casi va scelto **uno** dei due workflow: la duplicazione attuale �
 
 ### `pages-config-stale` — GitHub Pages: config datata e build mai osservata verde
 
-- **status**: open
+- **status**: done
 - **priority**: low
 - **labels**: documentation, github_actions
 - **milestone**: Hardening CI/CD
@@ -147,6 +147,10 @@ container `ghcr.io/actions/jekyll-build-pages` carica sempre `jekyll-github-meta
 `GET /repos/:nwo/pages` e va in errore fatale senza credenziali valide; il token disponibile in
 locale legge quell'endpoint via `curl` (HTTP 200) ma viene rifiutato dentro il container, per motivi
 non osservabili da fuori. Il primo run dopo il fix è quindi la prima vera verifica.
+
+**Chiuso il 2026-11-06**: Jekyll è stato tolto. Il sito ora è una pagina statica (`docs/index.html`)
+pubblicata da `pages.yml` senza build, come gli altri progetti; `_config.yml`, `index.md` e
+`jekyll-gh-pages.yml` sono stati rimossi, quindi i punti qui sotto non si applicano più.
 
 Da sistemare in `docs/_config.yml`, indipendentemente:
 
@@ -301,7 +305,7 @@ internal/<modulo>/transport/http/  handler HTTP ⇄ casi d'uso
 
 - [ ] modulo d'esempio con test a ogni livello (dominio senza database, store con un fake o sqlite)
 - [ ] composition root in `cmd/` che collega i livelli (DI manuale; Wire come opzione in `di-wiring`)
-- [ ] README e `docs/index.md` aggiornati con l'albero e "dove vanno le regole"
+- [ ] README e `docs/index.html` aggiornati con l'albero e "dove vanno le regole"
 
 ### `scaffold-add-module` — Comando `scaffold add module <nome>` per generare un nuovo bounded context
 

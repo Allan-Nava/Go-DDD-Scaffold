@@ -2,11 +2,11 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/Allan-Nava/Go-DDD-Scaffold)](https://goreportcard.com/report/github.com/Allan-Nava/Go-DDD-Scaffold)
 [![GoDoc](https://godoc.org/github.com/Allan-Nava/Go-DDD-Scaffold?status.svg)](https://godoc.org/github.com/Allan-Nava/Go-DDD-Scaffold)
-[![Deploy Jekyll with GitHub Pages dependencies preinstalled](https://github.com/Allan-Nava/Go-DDD-Scaffold/actions/workflows/jekyll-gh-pages.yml/badge.svg?branch=main)](https://github.com/Allan-Nava/Go-DDD-Scaffold/actions/workflows/jekyll-gh-pages.yml)
+[![Pages](https://github.com/Allan-Nava/Go-DDD-Scaffold/actions/workflows/pages.yml/badge.svg?branch=main)](https://allan-nava.github.io/Go-DDD-Scaffold/)
 [![Go](https://github.com/Allan-Nava/Go-DDD-Scaffold/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/Allan-Nava/Go-DDD-Scaffold/actions/workflows/go.yml)
 
 
-Generate a Domain Driven Design project layout for Go.
+Generate a Domain Driven Design project layout for Go. Site: <https://allan-nava.github.io/Go-DDD-Scaffold/>
 
 The templates are embedded in the binary, so `scaffold` runs anywhere — no
 `$GOPATH`, no repository checkout beside it.

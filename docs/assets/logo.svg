@@ -1,0 +1,26 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Go-DDD-Scaffold logo">
+  <defs>
+    <linearGradient id="gds-bg" x1="64" y1="24" x2="448" y2="488" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#17274a"/>
+      <stop offset="0.55" stop-color="#0e1830"/>
+      <stop offset="1" stop-color="#0a1020"/>
+    </linearGradient>
+    <linearGradient id="gds-rim" x1="256" y1="8" x2="256" y2="248" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="gds-core" cx="256" cy="256" r="70" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7dd3fc"/>
+      <stop offset="1" stop-color="#00add8"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#gds-bg)"/>
+  <rect x="2" y="2" width="508" height="508" rx="114" stroke="url(#gds-rim)" stroke-width="4"/>
+  <!-- the layers, outside in: transport, infrastructure, application; the domain is the core -->
+  <rect x="76" y="76" width="360" height="360" rx="72" stroke="#00add8" stroke-opacity="0.35" stroke-width="14" stroke-dasharray="34 20"/>
+  <rect x="136" y="136" width="240" height="240" rx="52" stroke="#00add8" stroke-opacity="0.6" stroke-width="16"/>
+  <rect x="190" y="190" width="132" height="132" rx="34" fill="url(#gds-core)"/>
+  <!-- dependencies point inwards -->
+  <path d="M256 92 V160" stroke="#7dd3fc" stroke-width="12" stroke-linecap="round"/>
+  <path d="M236 142 L256 164 L276 142" stroke="#7dd3fc" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,6 +1,6 @@
 # AGENTS.md - Go-DDD-Scaffold
 
-Generatore CLI (`github.com/Allan-Nava/Go-DDD-Scaffold`) che crea lo scheletro di un progetto Go a layout Domain Driven Design: CLI `scaffold init` (`main.go` + `scaffold/`), template del progetto generato (`template/`, `static/`, **embeddati nel binario**), estensione VSCode gemella (`extensions/vscode/`), docs Jekyll su GitHub Pages (`docs/`), CI GitHub Actions (`.github/workflows/`).
+Generatore CLI (`github.com/Allan-Nava/Go-DDD-Scaffold`) che crea lo scheletro di un progetto Go a layout Domain Driven Design: CLI `scaffold init` (`main.go` + `scaffold/`), template del progetto generato (`template/`, `static/`, **embeddati nel binario**), estensione VSCode gemella (`extensions/vscode/`), sito statico su GitHub Pages (`docs/index.html`, stesso modello degli altri progetti: nessuna build), CI GitHub Actions (`.github/workflows/`).
 
 
 Questo file definisce le regole operative per gli agent (Copilot, Claude, altri tool AI) quando lavorano in questo repository.
@@ -16,7 +16,7 @@ Questo file definisce le regole operative per gli agent (Copilot, Claude, altri 
 - **MAI `git push`** - lo fa sempre l'utente. MAI `Co-Authored-By` nei commit.
 - **Niente binari nel repo**: gli artefatti li produce la CI. Se trovi un eseguibile committato, va rimosso e aggiunto a `.gitignore`, non aggiornato (c'era `scaffold-cli-macos`, 4,8 MB).
 - **Zero dipendenze runtime dall'ambiente**: `template/` e `static/` sono in `embed.FS` (dichiarati in `main.go`, iniettati come `fs.FS` in `scaffold.Options`). Non reintrodurre lookup su `$GOPATH`, path assoluti o file letti da disco a runtime - un `go install` del binario non ha il repo accanto.
-- **Documentare le modifiche fattuali**: `README.md` e `docs/index.md` (albero del progetto generato, installazione, flag) vanno riflessi a ogni cambio del layout. Interventi non banali -> doc `.md` in `docs/` con schema ASCII, come `docs/audit-2026-08-11.md`.
+- **Documentare le modifiche fattuali**: `README.md` e `docs/index.html` (albero del progetto generato, installazione, flag) vanno riflessi a ogni cambio del layout. Interventi non banali -> doc `.md` in `docs/` con schema ASCII, come `docs/audit-2026-08-11.md`.
 
 ## Pattern per modifiche al generatore (validato)
 
@@ -54,8 +54,9 @@ Questo file definisce le regole operative per gli agent (Copilot, Claude, altri 
 - Template del progetto generato: `template/` (rendering) + `static/` (copia raw) - gemelli VSCode: `extensions/vscode/src/templates/`
 - Dev loop: `Makefile` - `check`, `test`, `e2e`, `build`, `docker`, `backlog-lint`, `roadmap`, `backlog-sync[-apply]`
 - **Backlog operativo**: `docs/backlog.md` (sorgente unica) - **Roadmap per milestone**: `docs/roadmap.md` (**generata**, non editarla) - tooling: `docs/scripts/` - `lib/backlog.py` (parsing + regole, fonte unica), `backlog-lint.py`, `generate-roadmap.py`, `sync-backlog-to-issues.py` (issue GitHub idempotenti, milestone create al volo). Il sync tocca **solo** le issue con label `backlog-sync`: Renovate/Dependabot e le segnalazioni di terzi non vengono mai lette ne chiuse.
-- CI: `.github/workflows/` - `go.yml` (gofmt+vet+test matrice 1.22-1.24, **+ job che compila il progetto generato e ne fa lo smoke test**), `release.yml` (binari multi-arch su release), `go-release.yml` (tarball via `build.sh`), `docker-publish.yml` (ghcr.io, multi-arch, cache GHA), `vscode-publish.yml` (marketplace su tag), `jekyll-gh-pages.yml` (docs)
+- CI: `.github/workflows/` - `go.yml` (gofmt+vet+test matrice 1.22-1.24, **+ job che compila il progetto generato e ne fa lo smoke test**), `release.yml` (binari multi-arch su release), `go-release.yml` (tarball via `build.sh`), `docker-publish.yml` (ghcr.io, multi-arch, cache GHA), `vscode-publish.yml` (marketplace su tag), `pages.yml` (pubblica `docs/` così com'è; le PNG di `docs/assets/` si rigenerano in locale con `scripts/render-assets.sh` da `logo.svg` e `scripts/og-card.html`)
 - **Audit tecnico, correzioni e debito residuo**: `docs/audit-2026-08-11.md`
+- **Audit di prodotto e milestone verso la v1**: `docs/audit-2026-11-06.md`
 - **Estensione VSCode** (`extensions/vscode/`): riscritta come wrapper della CLI. `src/scaffold/cli.ts` e **puro** - non importa `vscode` - ed e li che vive la logica (scoperta del binario, argv, parsing dell'output); i suoi test girano con `node --test`, senza host editor (`npm test`). L'API dell'editor sta solo in `extension.ts` e `commands/init.ts`. Zero dipendenze runtime: non aggiungerne per comodita. `go install` produce un binario chiamato **`Go-DDD-Scaffold`** (dal nome del modulo), non `scaffold`: la scoperta cerca entrambi, e cerca anche in `$GOBIN`/`$GOPATH/bin`/`~/go/bin` perche un editor GUI non legge il profilo della shell. Un programma omonimo che non risponde `scaffold version` va scartato, non eseguito. Resta aperto `publisher: "None"` (item `vscode-extension-publish-metadata`).
 - **`node --test <directory>` non funziona** su tutte le versioni di Node (su 23.3 da `MODULE_NOT_FOUND` sulla dir): usare il glob `node --test "out/**/*.test.js"`.
 - Stack del progetto generato: Fiber v2, GORM (MySQL), zap, `caarlos0/env/v11`, godotenv

@@ -10,7 +10,7 @@ description: "Milestone del backlog — pagina generata da docs/backlog.md"
 <!-- GENERATO da docs/scripts/generate-roadmap.py — NON editare a mano. -->
 > Pagina **generata** da [`docs/scripts/generate-roadmap.py`](scripts/generate-roadmap.py) leggendo [`docs/backlog.md`](backlog.md) (unica sorgente). Le milestone sono quelle dichiarate dagli item: non c'è un elenco fisso. Affianca la [board issue di GitHub](https://github.com/Allan-Nava/Go-DDD-Scaffold/milestones).
 
-_9 milestone · 38 item pianificati (31 open · 7 done)._
+_9 milestone · 38 item pianificati (30 open · 8 done)._
 
 ## Audit 2026-08-11
 
@@ -44,14 +44,14 @@ _0 open · 3 done_
 
 ## Hardening CI/CD
 
-_2 open · 2 done_
+_1 open · 3 done_
 
 | id | Titolo | Priorità | Status |
 |----|--------|----------|--------|
-| `pages-config-stale` | GitHub Pages: config datata e build mai osservata verde | low | open |
 | `release-drop-thirdparty-action` | release.yml: valutare se togliere del tutto la action di terze parti | low | open |
 | `golangci-lint` | Nessun linter oltre gofmt + go vet | medium | done |
 | `release-yml-pin-and-labels` | `release.yml`: action di terze parti non pinnata a SHA, job etichettati male | medium | done |
+| `pages-config-stale` | GitHub Pages: config datata e build mai osservata verde | low | done |
 
 ## Progetto generato
 

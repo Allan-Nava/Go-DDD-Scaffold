@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Go-DDD-Scaffold — a Go service skeleton that compiles, runs and ships</title>
+<meta name="description" content="scaffold init writes a Go HTTP service with graceful shutdown, a health check, configuration from the environment, a non-root multi-stage image and docker compose. Every template is compiled in CI before it ships. One self-contained binary.">
+<meta name="author" content="Allan Nava">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#0b1120" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<link rel="canonical" href="https://allan-nava.github.io/Go-DDD-Scaffold/">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Go-DDD-Scaffold">
+<meta property="og:title" content="Go-DDD-Scaffold — a Go service skeleton that compiles, runs and ships">
+<meta property="og:description" content="One command writes a Go HTTP service with graceful shutdown, health check, env configuration, a non-root image and docker compose. Every template is compiled in CI.">
+<meta property="og:url" content="https://allan-nava.github.io/Go-DDD-Scaffold/">
+<meta property="og:image" content="https://allan-nava.github.io/Go-DDD-Scaffold/assets/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Go-DDD-Scaffold — a terminal running scaffold init, 13 files created">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Go-DDD-Scaffold — a Go service skeleton that compiles, runs and ships">
+<meta name="twitter:image" content="https://allan-nava.github.io/Go-DDD-Scaffold/assets/og-card.png">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Go-DDD-Scaffold","applicationCategory":"DeveloperApplication","operatingSystem":"Linux, macOS, Windows","description":"A CLI that generates a Go HTTP service skeleton: graceful shutdown, health check, configuration from the environment, GORM connection pool, a non-root multi-stage Docker image and docker compose, compiled in CI before every release.","url":"https://allan-nava.github.io/Go-DDD-Scaffold/","codeRepository":"https://github.com/Allan-Nava/Go-DDD-Scaffold","license":"https://opensource.org/licenses/MIT","author":{"@type":"Person","name":"Allan Nava","url":"https://github.com/Allan-Nava"},"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
+</script>
+<style>
+:root{--bg:#0b1120;--surface:#111c34;--code:#0d1626;--border:rgba(148,163,184,.16);--text:#dbe4f0;--muted:#93a4bd;--heading:#f1f5f9;--brand:#00add8;--link:#38bdf8;--ok:#34d399;--warn:#fbbf24;--bad:#f87171;--glow:radial-gradient(900px 420px at 12% -10%,rgba(0,173,216,.16),transparent 70%)}
+@media (prefers-color-scheme:light){:root{--bg:#ffffff;--surface:#f4f7fb;--code:#0d1626;--border:rgba(15,23,42,.12);--text:#33415c;--muted:#64748b;--heading:#0f172a;--brand:#0284c7;--link:#0369a1;--glow:radial-gradient(900px 420px at 12% -10%,rgba(0,173,216,.10),transparent 70%)}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--glow),var(--bg);color:var(--text);font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:var(--link)}
+main,header,footer{max-width:960px;margin:0 auto;padding:0 16px}
+header{display:flex;align-items:center;gap:12px;padding-top:20px;padding-bottom:20px}
+header img{width:32px;height:32px}
+header b{color:var(--heading);font-size:17px}
+header nav{margin-left:auto;display:flex;gap:16px;font-size:14px}
+header nav a{color:var(--muted);text-decoration:none}
+header nav a:hover{color:var(--link)}
+.hero{display:grid;grid-template-columns:1fr auto;gap:32px;align-items:center;padding:40px 0 24px}
+.hero img{width:168px;height:168px}
+h1{color:var(--heading);font-size:clamp(32px,5.5vw,50px);line-height:1.08;letter-spacing:-.02em;margin:0 0 14px}
+.lede{font-size:19px;color:var(--muted);margin:0 0 24px;max-width:640px}
+.install{display:flex;align-items:center;gap:10px;background:var(--code);color:#cfe3dc;border:1px solid var(--border);border-radius:10px;padding:12px 14px;font:14px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;max-width:100%;overflow-x:auto}
+.install code{white-space:nowrap;flex:1}
+.install button{font:inherit;font-size:12px;background:none;color:#93a4bd;border:1px solid rgba(148,163,184,.3);border-radius:6px;padding:3px 9px;cursor:pointer}
+.links{margin:14px 0 0;font-size:14px;color:var(--muted)}
+pre{background:var(--code);color:#cfe3dc;border:1px solid var(--border);border-radius:12px;padding:16px 18px;overflow-x:auto;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:0}
+pre .b{color:#f87171}pre .o{color:#34d399}pre .h{color:#93a4bd}pre .d{color:#64748b}pre .c{color:#38bdf8}
+h2{color:var(--heading);font-size:24px;margin:52px 0 12px;letter-spacing:-.01em}
+.note{color:var(--muted);font-size:14px;margin:10px 0 0}
+.wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:9px 10px;border-bottom:1px solid var(--border)}
+th{color:var(--muted);font-weight:500;font-size:13px}
+td code,p code,li code{font:13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:1px 5px}
+td:first-child{white-space:nowrap}
+.tag{white-space:nowrap;font-size:13px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.card h3{margin:0 0 6px;color:var(--heading);font-size:16px}
+.card p{margin:0;font-size:15px}
+footer{margin-top:64px;padding-top:20px;padding-bottom:40px;border-top:1px solid var(--border);color:var(--muted);font-size:14px;display:flex;flex-wrap:wrap;gap:18px}
+.hero>div{min-width:0}
+@media (max-width:640px){.hero{grid-template-columns:1fr;padding-top:20px}.hero img{display:none}header nav a:not(:last-child){display:none}.lede{font-size:17px}}
+</style>
+</head>
+<body>
+<header>
+<img src="assets/favicon.svg" alt="">
+<b>Go-DDD-Scaffold</b>
+<nav><a href="#layout">Layout</a><a href="#guarantees">Guarantees</a><a href="#roadmap">Roadmap</a><a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/releases">Releases</a><a href="https://github.com/Allan-Nava/Go-DDD-Scaffold">GitHub</a></nav>
+</header>
+<main>
+<section class="hero">
+<div>
+<h1>A Go service that compiles, runs and ships — from one command.</h1>
+<p class="lede"><code>scaffold init</code> writes an HTTP service with graceful shutdown, a health check, configuration from the environment, a connection pool, a non-root multi-stage image and docker compose. Before every release CI generates a project and compiles it: a template that emits broken Go does not ship.</p>
+<div class="install"><code>go install github.com/Allan-Nava/Go-DDD-Scaffold@latest</code><button type="button" onclick="navigator.clipboard&&navigator.clipboard.writeText('go install github.com/Allan-Nava/Go-DDD-Scaffold@latest');this.textContent='copied'">copy</button></div>
+<p class="links">The binary is named <code>Go-DDD-Scaffold</code> after the module — rename it to <code>scaffold</code>, or use <code>docker run --rm -v "$PWD:/work" ghcr.io/allan-nava/go-ddd-scaffold init</code>, or the <a href="https://marketplace.visualstudio.com/items?itemName=allannava95.go-ddd-scaffold">VS Code extension</a>. Templates are embedded: no <code>$GOPATH</code>, no checkout beside it.</p>
+</div>
+<img src="assets/logo.svg" alt="Go-DDD-Scaffold logo: nested layers around a solid core, an arrow pointing inwards">
+</section>
+
+<pre><span class="d">$</span> mkdir -p ~/code/github.com/acme/orders &amp;&amp; cd $_
+<span class="d">$</span> scaffold init
+<span class="o">Create</span> Dockerfile
+<span class="o">Create</span> README.md
+<span class="o">Create</span> cmd/main.go
+<span class="o">Create</span> cmd/main_test.go
+<span class="o">Create</span> database/db.go
+<span class="o">Create</span> docker-compose.yml
+<span class="o">Create</span> env/.env.local
+<span class="o">Create</span> env/env.go
+<span class="o">Create</span> env/env_test.go
+<span class="o">Create</span> go.mod
+<span class="o">Create</span> .dockerignore
+<span class="o">Create</span> Makefile
+<span class="o">Create</span> config/config.yml
+
+13 file(s) created in ~/code/github.com/acme/orders  <span class="h"># module github.com/acme/orders, read from the path</span>
+
+<span class="d">$</span> go mod tidy &amp;&amp; go test ./...
+<span class="o">ok</span>  	github.com/acme/orders/cmd	0.004s
+<span class="o">ok</span>  	github.com/acme/orders/env	0.002s</pre>
+<p class="note">Real output of <code>v0.8.5</code>. Run it again and every file is reported as <code>Skip</code>: nothing is overwritten without <code>--force</code>.</p>
+
+<h2 id="layout">What it generates</h2>
+<div class="wrap"><table>
+<thead><tr><th>File</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>cmd/main.go</code></td><td>Fiber router with recover, logger and CORS; <code>/health</code>; listens on <code>HTTP_ADDR</code>; on <code>SIGINT</code>/<code>SIGTERM</code> drains in-flight requests for up to 10 s.</td></tr>
+<tr><td><code>cmd/main_test.go</code></td><td>Drives the router through <code>app.Test</code>: no port to bind, no database — the smoke test to keep green while you add routes.</td></tr>
+<tr><td><code>env/env.go</code></td><td>Configuration from the environment (<code>caarlos0/env</code>), with <code>env/.env.&lt;APP_ENV&gt;</code> loaded when present; defaults pinned by <code>env_test.go</code>.</td></tr>
+<tr><td><code>database/db.go</code></td><td>GORM MySQL pool with idle/open limits and connection recycling. The DSN carries the password, so it never reaches a log or an error.</td></tr>
+<tr><td><code>Dockerfile</code></td><td>Multi-stage: dependencies cached in their own layer, an <code>alpine</code> runtime of a few MB, running as an unprivileged user.</td></tr>
+<tr><td><code>docker-compose.yml</code></td><td>The service and MySQL 8.4, started only once the database passes its health check.</td></tr>
+<tr><td><code>Makefile</code></td><td><code>run</code>, <code>build</code>, <code>test</code>, <code>check</code>, <code>up</code>, <code>down</code>, <code>logs</code>.</td></tr>
+</tbody></table></div>
+<pre style="margin-top:14px"><span class="d">$</span> DB_HOST= make run                         <span class="h"># no database: the service starts on its own</span>
+<span class="c">{"msg":"DB_HOST is empty: starting without a database"}</span>
+<span class="c">{"msg":"listening","addr":"0.0.0.0:8080"}</span>
+
+<span class="d">$</span> curl -s -o /dev/null -w '%{http_code}\n' localhost:8080/health
+<span class="o">200</span></pre>
+<p class="note"><code>make up</code> starts the service with MySQL through docker compose. The generated <code>env/.env.local</code> sets <code>DB_HOST=localhost</code>, so a plain <code>make run</code> needs MySQL up — making the database optional by default is the first item of <a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/milestone/5">v0.9</a>.</p>
+
+<h2 id="guarantees">Guarantees, enforced in CI</h2>
+<div class="grid">
+<div class="card"><h3>It compiles, or it does not ship</h3><p>Every push generates a project in a temporary directory and runs <code>go mod tidy</code>, <code>go build</code>, <code>go vet</code>, <code>gofmt</code> and its tests, then starts it and calls <code>/health</code>.</p></div>
+<div class="card"><h3>Your files are yours</h3><p>Existing files are skipped atomically (<code>O_EXCL</code>), never overwritten unless you ask with <code>--force</code>.</p></div>
+<div class="card"><h3>One binary, anywhere</h3><p>Templates live in an <code>embed.FS</code>. A <code>go install</code>, a release tarball or the container image all carry everything they need.</p></div>
+<div class="card"><h3>Go stays Go</h3><p>Rendered with <code>text/template</code>, never <code>html/template</code>, so <code>&amp;&amp;</code> and <code>&lt;-</code> are never escaped — a regression test pins it.</p></div>
+</div>
+
+<h2 id="roadmap">Roadmap</h2>
+<p>The name promises a Domain Driven Design layout; today the generated project is the production-ready base a DDD service sits on. The <a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/blob/main/docs/audit-2026-11-06.md">product audit</a> lists what is missing and orders it:</p>
+<div class="wrap"><table>
+<thead><tr><th>Milestone</th><th>What changes</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td><a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/milestone/5">v0.9</a></td><td>The first five minutes work on every machine: <code>make run</code> without MySQL, module path with a dotted home directory, <code>--module</code> and <code>--name</code>, a generated <code>.gitignore</code>, CORS closed by default.</td><td class="tag">open</td></tr>
+<tr><td><a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/milestone/6">v1.0</a></td><td>Real DDD: one module per bounded context with <code>domain</code>, <code>application</code>, <code>infrastructure</code> and <code>transport</code>; a complete example module; <code>scaffold add module</code>; an architecture test that fails when the domain imports infrastructure.</td><td class="tag">open</td></tr>
+<tr><td><a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/milestone/7">v1.1</a></td><td>Production: <code>/livez</code> and <code>/readyz</code>, Prometheus metrics, request id, migrations, a CI for the generated project, a supported Go toolchain.</td><td class="tag">open</td></tr>
+<tr><td><a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/milestone/8">v1.2</a></td><td>Choices: <code>--http std</code>, <code>--db postgres|none</code>, <code>--dry-run</code>.</td><td class="tag">open</td></tr>
+<tr><td><a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/milestone/9">Distribution</a></td><td>A binary named <code>scaffold</code>, GoReleaser with checksums and Homebrew, golden tests of the generated tree.</td><td class="tag">open</td></tr>
+</tbody></table></div>
+<p class="note">Each milestone links to its GitHub issues; the plan itself lives in <a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/blob/main/docs/backlog.md">docs/backlog.md</a>.</p>
+
+<h2>In VS Code</h2>
+<p>The <a href="https://marketplace.visualstudio.com/items?itemName=allannava95.go-ddd-scaffold">extension</a> runs the same CLI on the folder you pick — it carries no templates of its own, so the editor and the terminal always generate the same project.</p>
+</main>
+<footer>
+<a href="https://github.com/Allan-Nava/Go-DDD-Scaffold">GitHub</a>
+<a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/releases">Releases</a>
+<a href="https://marketplace.visualstudio.com/items?itemName=allannava95.go-ddd-scaffold">VS Code</a>
+<a href="https://github.com/Allan-Nava/Go-DDD-Scaffold/blob/main/docs/audit-2026-11-06.md">Audit</a>
+<span>MIT · by <a href="https://github.com/Allan-Nava">Allan Nava</a></span>
+</footer>
+</body>
+</html>
