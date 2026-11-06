@@ -102,7 +102,8 @@ make docker  # build the container image
 
 `make e2e` is the gate that matters: it proves the templates still emit
 buildable Go. See [CLAUDE.md](CLAUDE.md) for the working rules and
-[docs/audit-2026-08-11.md](docs/audit-2026-08-11.md) for the technical audit.
+[docs/audit-2026-08-11.md](docs/audit-2026-08-11.md) for the technical audit and
+[docs/audit-2026-11-06.md](docs/audit-2026-11-06.md) for the product audit and its milestones.
 
 ### Backlog and milestones
 

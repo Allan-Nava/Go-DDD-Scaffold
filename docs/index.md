@@ -77,6 +77,9 @@ re-running `scaffold init` in a live project is safe.
 The technical audit of the generator, the applied fixes and the remaining debt
 are in [audit-2026-08-11](audit-2026-08-11.md).
 
+The product audit — what is missing to make it an excellent tool, and the
+milestones that get it there — is in [audit-2026-11-06](audit-2026-11-06.md).
+
 ## Backlog e roadmap
 
 Il debito residuo vive in [backlog.md](backlog.md), che è la **sorgente unica** delle
